@@ -1,0 +1,1637 @@
+#!/usr/bin/env bash
+#-------------------------------------------------------------------------------------------------------------------
+#           CopyRight 2015-2023Shorewall a.k.a. Kowalsky :D    
+#           shorewall@mail.com   http://casapippozzi.cf
+#
+#           RaiNix is free software: you can redistribute it and/or modify
+#           it under the terms of the GNU General Public License as published by
+#           the Free Software Foundation, either version 3 of the License, or
+#           (at your option) any later version.
+#
+#           This program is distributed in the hope that it will be useful,
+#           but WITHOUT ANY WARRANTY; without even the implied warranty of
+#           MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#           GNU General Public License for more details.
+#
+#           You should have received a copy of the GNU General Public License
+#           along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#       
+#----------------------------------------------------------------------------------------------------------------------------------------------------
+#           RaiNix: Rai live, Replay e Radiorai player, RaiPlay search tool for *Nix systems.
+#           All you need to do (if you want) is change the Player and PlayerRadio vars.
+#           Can also record the Radio, Replay flow and most of the live streaming, depending of your
+#           ffmpeg level and the originating stream type.
+#           This option must be used for study cases only. Respecting the DMCA rules.
+#           The usage is under EXCUSIVE USERS RESPONSIBILITY.
+#----------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#           By K. aka Shore aka The Gray and many other identities :-)
+#
+#           Many thanks to my friend Paolo Di Stefano (www.paolodistefano.name) for changing some SED 
+#           statements making the V2 syntax *BSD compatible
+#
+#           Many thanks to my friend Laser that pushed into my mind the idea to add  a 'search' option
+#           for  RaiPlay site. I just copied 'as-is' the basic initial coding (search panel and the data grab)
+#           from its own RaiNix mod :-) to proceed with my coding.
+#--------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   changelog: v 3.0.0  ** Major** Added search option for RaiPlay site.
+#                                   Removed some dummy code.
+#                                   Removed checking for export Display variable. Assuming the Linux box is OK by default
+#                                   Removed gnome-terminal support.
+#                                   Many cosmetic changes on menu's layout to make them more clear & standard.
+#   changelog: v 3.0.1  Changed Radio menu' anchor and menu' build code.
+#   changelog: v 3.0.2  Maint stuff. Fixed some 'typo' and removed a lot of dummy code. Added QMPlay2 into PlayersVod
+#   changelog: v 3.0.3  Now can PLAY  without using an Xterm. Set the NoTerm flag to 0 to activate Xterm
+#                                  Can run into 'UFO' systems as like as WSL or MAC setting the Wsl flags to 1
+#                                  and also setting the alternative players path (the 'W' ones)  to fit your env.
+#                                  Can record w/o an xterm by setting HideRecorder=1.
+#                                  Async tasks are kept alive also closing the main RaiNix script.
+#   changelog: v 3.0.4  Fixed Rai Replay html obfuscation on Replay home page and other minor changes
+#   changelog: v 3.0.5  Changed default Replay record format to mp4 to make Apple devices happy....
+#   changelog: v 3.1.0  Skip version to 3.1.0 because of new Raiplay (site) pages layout. 
+#   changelog: v 3.1.1  Added refresh option to Live channels menu, because RaiPlay cames & goes.
+#                                  Added 'Cineteca Rai' (ex Rai Movie) option. This obsoletes the RaiMovie standalone script.
+#                                  Rewritten almost all the SEARCH option functions. Now more reactives.
+#   changelog: v 3.1.2  Rewritten recording code. Added some more supported downloaders
+#                                  Made a a full restyling about search results items info.
+#   changelog: v 3.1.3  Minor code cleanup. Added -k switch to curl to fix some broken curl/openssl releases.
+#                                  Added one line function to centralize titles syntax cleanup
+#   changelog: v 3.1.4  Fixed (partially) the latest mods on search made by RAI people under an LSD trip.
+#                                  The COVID-19 should have pushed them into a nervous breakdown :-)
+#                                  So the max search results are now limited. Sorry
+#   changelog: v 3.1.5  The Cineteca option now has two ways. If the 'jq' command is availabe in the system
+#                                  the new way (much faster in loading the movie list) is used.
+#   changelog: v 3.1.6  Forced dummy openssl.conf to bypass strong level 2 requiremet on some distro.
+#   changelog: v 3.1.7  RAI now largely uses json data format. So this script works only if the JQ tool is installed.
+#                                   Cleared and rewritten the SEARCH functions basing data on JSON format.
+#                                   Removed the double way for Cineteca. Now JQ tool must be installed.
+#   changelog: v 3.1.8  Added HlsdlVbr flag to allow a user choice about quality to use for download
+#                                   when hlsdl downloader is selected.
+#                                   Removed Streamlink from players & recorder list. It seems that ADOBE HDS links
+#                                   are not used anymore by RAI and we have better tools now  to play & record hls flows.
+#                                   Also removed FFplay, too old and crappy.
+#                                   VBR handling & setting for search & replay items # function not reliable. Removed from panel
+#   changelog: v 3.1.9  Reenabled user vbr handling on menu'. Can be enabled/disabled on-the-fly. Default=disable
+#                                   Mind: crypted streams quality cannot be handled. Use a capable player as like as QMPlay2
+#                                   Added menu' entry to handle hlsdl vbr prompt when selected as default downloader
+#                                   Removed paging function for search results. Now unuseful because of the search results capped.
+#   changelog: v 3.2.0  Added info messages about network troubles. Added the Local Restream option.
+#                                   Supprted protocols are:http and rtp.#   This means that any lan client connecting the restream
+#                                   address can watch the stream w/o using any proprietary sw. Using a capable mediaserver
+#                                   the flow can be watched also on a DLNA compatible Smart Tv.
+#                                   A little status monitor may be enabled setting the flag Remonitor=1
+#                                   Added Epg on live streams. Selectable by menu' option.
+#   changelog: v 3.2.1  Code cleanup & optimization. Added rtsp protocol for local restream option
+#                                   Mind: rtsp-simple-server must be installed and running.
+#   changelog: v 3.2.2  Code cleanup for Restreaming function. Added udp protocol. Added MonWait variable
+#                                   to handle Monitor buffering.
+#                                   Patched a bug caused by RAI mod in the html code. 
+#   changelog: v 3.2.3  Added Streamlink as alternative player for RAI new HLS manifests.
+#                                  The user can set the preferred video engine by the SlinkPlayer variable.
+#                                  Usually mpv, vlc, mplayer and xine works fine.
+#                                  Deep tests showed no flow drops on Mageia6.1 and othter distro.
+#   changelog: v 3.2.4  Added FFmpeg as alternative player for RAI new HLS manifests.
+#                                  The user can set the preferred video engine by the SlinkPlayer variable.
+#                                  Added xine and mplayer as supported HlsdlEngine. Hlsdl usage as player
+#                                  was already supported using vlc or mpv.
+#   changelog: v 3.2.5  Better support for FFmpeg Streamlink and Hlsdl as alternative players for RAI new HLS manifests.
+#                                  The user can set the preferred video engine by the SlinkPlayer or the HlsdlEngine vars.
+#                                  Using FFMPEG as player the selected engine is the same as for Streamlink (SlinkPlayer var)
+#                                  Some stuff for restreaming. Now this can be done using hlsdl+ffmpeg or ffmpeg alone.
+#                                  Selecting the HTTP restream protocol requires anyway VLC.
+#                                  The local monitor will be performed by the tool setted into MonPlayer var.
+#   changelog: v 3.3.0 Undocumented option: ESC key on the main menu' allow to switch on-the-fly the
+#                                 hardcoded player for video and radio streams.
+#   changelog: v 3.3.1 Added a secondary menu' option to use an alternate location link instead of the legacy HLS one,
+#                                 usually for VOD/Replay/Search links.
+#   changelog: v 3.3.2 Fixed again Radio channels, now on a new home page. Added a raw epg.
+#   changelog: v 3.3.3 Rehandled Replay function. Make better epg handling for all sources. Aded the new PODCAST option.
+#                                 Added podcast search option.
+#   changelog: v 3.3.4 ESC button from the main menu' now allow the user to change Live & Vod players (at its own risk). 
+#                                 The Radio player can be changed from the Radio live menù or by the Podcast Radio menù'
+#   changelog: v 3.3.5 Some code cleanup. Restream tool forced to be ffmpeg on replay vods, because of some audio loss
+#                                 using hlsdl. Removed all references to mp4 links now diappeared into Rai streams. 
+#                                 Added MapFFmpeg flag to force ffmpeg to use best a/v quality (restream only).
+#                                 Added experimental Rai 4k support.
+#                                 Cleaned and optimized Restream code and a lot of obsolete code
+#                                 Avoided passing the Relinker link to the player by extracting direct link using output=20
+#   changelog: v 3.3.6 Better m3u8 manifest checking to warn about unplayable streams. 
+#                                 Used json format to extract Movies cat & lists.
+#   changelog: v 3.3.7 Enabled the new ResTidy function. This avoid protocol/port conflict when running a Restream flow. 
+#                                 On exit running restream will be ketp running. ResTidy act only when starting a new retream.
+#                                 Changed the AskAction dialog to make it compatible with the latest Slack releases.
+#
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#                               Times goes on and release by release, RAINIX, and RaiNixVod,  have mapped a large part of the
+#                               RAI sites Raiplay & Raiplaysound.
+#                               Offering, in some cases, even more option than the web site itself about handling the contents.
+#                               If the RAI team will change again in the future the web sites structure there is no guarantee that the
+#                               script will be updated accordly.
+#                               Unless there will be a valuable amount of requests by the end users.
+#
+#                               So, enjoy until it runs and I want to update Rainix.
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#                                   FOR A FULL AND WELL DETAILED SCRIPT FEATURES/USAGE DESCRIPTION
+#                                   GO TO MY FRIEND Paolo site: http://www.paolodistefano.name   
+#
+#   notes: v 3.0.X      1) Some links are DRM protected. No player on Linux can play these sources.
+#						          2) The SetVbr option applies only to StreamLink. Mpv can set the required quality only if an 
+#                                   hlsvariant type stream is detected. Otherwise the best video quality is applied.
+#                               3)  A list of the major players working for live replay/vod and radio streams are included by default.
+#                                   Set your preferred order. The player window title setting is supported only for MPV, VLC, Streamlink.
+#                               4)  VLC had a well known problem reading some H264 encoded video enclosed into an AVI format. 
+#                                   This may happen on recording RAI LIVE CHANNELS. Pls use anothe player ffmpeg based to play..
+#                               5)  Running RaiNixV3 into an O.S. other than Linux (excluded the *BSD ones that runs flawlessy)
+#                                   may require some user actions to setup the environments. It's just a challenge. Pls DO NOT ASK ME
+#.
+#                               This release SUPERSEDES the old V1 and V2 scripts that will non be updated anymore.
+#                               This release SUPERSEDES also RaiMovie script that will non be updated anymore.
+#
+#----------------------------------------------------------------------------------------------------------------------------------
+ScriptHome="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+Me=`basename $0`
+Version='3.3.7'
+CodeName="'The Kiev ghost'"
+AnchorLive="https://www.raiplay.it/dirette.json"
+AnchorOnAir="https://www.raiplay.it/palinsesto/onAir.json"
+AnchorCine="http://www.raiplay.it"
+AnchorVideo="http://www.raiplay.it"
+AnchorRadio="https://www.raiplaysound.it"
+AnchorReplay="http://www.raiplay.it/guidatv"
+AnchorReplayApp="http://www.raiplay.it/palinsesto/app"
+AnchorPodSearch="https://www.raiplaysound.it/atomatic/rai-search-service/api/v2/sound/search"
+AnchorVidSearch="https://www.raiplay.it/atomatic/raiplay-search-service/api/v3/search"
+ShowallPage="https://www.raiplay.it/ricerca.html"
+VodHome="https://www.paolodistefano.name/joomla/download/visitatori-guest/rainixvod/scarica.html"
+VodHelper="rainixvod.sh"
+Warn=0
+#----------------------------------------------------- Reserved to egineeers. ------------------------------------------        
+UserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15"                                        
+CookieJar="/tmp/"$Me"_Cookies.txt"
+Curl="curl -s -k  -L $socks --max-time 10 -c $CookieJar -b $CookieJar"
+Wget="wget -q --no-check-certificate -T 10 -O -"
+socks=""
+ShowInfoDelay=3
+MyPid="$$"
+export OPENSSL_CONF=/dev/null     # Bypass SSL key min Lev 2 enforcement
+#Curl="$Wget"                                 # Use wget instead of curl to fetch data
+#------------------------------------------------------------------------------------------------------------------------------
+OS=$OSTYPE                                    # Test your OS
+case "$OS" in 
+"linux-gnu") 
+ LocalIp=$(ip route | grep -om 1 'src.*' | cut -d ' ' -f2);;
+ #LocalIp=$(ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/');;
+*"bsd"*)
+ LocalIp=$(ifconfig | grep inet | grep netmask | grep broadcast | head -1 | cut -d ' ' -f2);;
+esac
+#----------------------------------------------------------------------------------------------------------------------------------
+# LocalIp=$(ifconfig | grep -o 'inet.*' | grep netmask | grep broadcast | head -1 | tr -s ' ' | cut -d ' ' -f2) # May be works on Linux/Bsd/Mac
+#----------------------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------- Here you can change some settings ---------------------------------
+#----------------------------------------------------------------------------------------------------------------------------------
+PlayerOpt=""
+HlsdlVbr="-b"                                    # Handle recorder quality. Applies only to hlsdl. Auto='-b' Prompt=""
+ResTools="ffmpeg hlsdl"                   # ResTool is the first available in the list
+ResProtocols="http rtp rtmp rtsp udp"       # Set your restreaming protocol priority order
+ResVlc="0"                                      # Force VLC alone as restreamer tool for HTTP protocol  *NEW
+Remonitor=1                                   # Enable restream monitor
+EpgStatus=1                                    # Enable Epg
+Enable4k=1                                      # Enable experimental 4k channel. Requires a very good graphic card & powerful cpu
+ReChecker='ResCheck'                    # Restream monitor starting checker (ResWait or ResCheck)
+#----------------------------------------------------------------------------------------------------------------------------------
+MultiProcess=1                                          # 0 or 1 : Setting 1 allow multiples Palyers/Recorders to run concurrently
+#----------------------------------------------------------------------------------------------------------------------------------
+PlayersRadio="mpv QMPlay2 vlc smplayer parole bomi audacious dragon NotFound" # Set your RADIO players priority order
+PlayersLive="mpv QMPlay2 smplayer vlc parole bomi streamlink hlsdl ffmpeg NotFound"   # Set your LIVE players  priority  order
+PlayersVod="mpv QMPlay2 bomi smplayer vlc parole hlsdl NotFound"            # Set your VOD/REPLAY players priority order
+Recorders="hlsdl ffmpeg youtube-dl  NotFound"  # Set your RECORDER tool priority order
+Streamers='mpv vlc mpv xine'
+MonPlayers='ffplay mpv vlc'                   # Supported player for Restreaming monitor  
+Terminals="xterm konsole NotFound"    # Supported terminal to start async tasks 
+# HideRecorder="0"	      						# set=1 hides the recorder window. No xterm used. DANGEROUS!!!
+NoTerm=1                                               # Set 1 to run w/o any terminal for async tasks
+Wsl=0                                                      # Set to 1 to run PLAYERS into an alternate environment/path
+HlsdlEngine='mpv'                                  # set mpv or vlc or xine or mplayer engine when using hlsdl as  player
+SlinkPlayer='mpv'                                   # set here your preferred streamlink video engine
+MapFFmpeg='1'                                      # Force ffmpeg Vmap-Amap for best audio/video streams. May be obsolete...
+FFmpeg='ffmpeg'                                   # Make FFmpeg variable to allow custom builds
+#----------------------------------------------------------------------------------------------------------------------------------
+MpvOpt="--demuxer-thread=yes  --demuxer-readahead-secs=15 --autofit=800x600"
+MpvQuality="--hls-bitrate=max"
+#----------------------------------------------------------------------------------------------------------------------------------
+#-----      These settings affect only FFmpeg recorder. Other tools can records using defaults
+#----------------------------------------------------------------------------------------------------------------------------------
+FFmpegOpt="-v info -stats"	      				#Set here your options for FFmpeg recording
+AudioCodec="copy"                                 # set 'libmp3lame' to change audio recording format to mp3
+LiveRecFmt="avi"                                    # out fmt for live  recording for ffmpeg. Usually avi or mkv are ok.
+ReplRecFmt="mp4"                                 # out fmt for replay recording for ffmpeg. Usually mp4 is ok. 
+#----------------------------------------------------------------------------------------------------------------------------------
+PlayerLiveW="/usr/bin/mpv $MpvOpt"      # Alternative players to be used into other environments
+PlayerVodW="/usr/local/bin/vlc"                # setting the Wsl flags = 1. 
+PlayerRadioW="/usr/local/bin/vlc"              # These are just placeholders. 
+#----------------------------------------------------------------------------------------------------------------------------------
+Savedir="$HOME/Video"                  # Set your preferred folder to store recording data
+Debug=0                                          # Set 1 to get step by step contents extracting Search links
+Iconic="-iconic"								 # Set this var to '' (null) for debugging purposes
+Hold="-iconic"								     # Set this var to '-hold' for debugging purposes
+Psize=100                                        # Search max results x PAGE . Max allowed 99? My be more :-)
+#----------------------------------------------------------------------------------------------------------------------------------
+#--------------------  Changing after this point you can do only damages :-) on Linux -------------------
+#-----------  All the following checks are done only if Rainix runs into a Linux/BSD env.   ------------
+#--------  Into 'UFO' systems the end user may need to adjust some player/recorder path ---------
+#----------------------------------------------------------------------------------------------------------------------------------
+Who=$(whoami)
+Owner='root'
+#---------------------------------------- Use external conf to override defauls --------------------------------------
+if [ -f "$ScriptHome/$Me.conf" ]; then
+    .  "$ScriptHome/$Me.conf"
+    dialog --title "Warning" --infobox "You are using the external $Me.conf.\nPlease be careful changing internal defaults." 4 50; 
+	sleep 3
+fi
+#----------------------------------------------------------------------------------------------------------------------------------
+for MonPlayer in $MonPlayers; do
+	if [ -n "`which $MonPlayer 2>/dev/null`" ]; then
+		break
+	fi
+done
+
+for PlayerLive in $PlayersLive; do
+	if [ -n "`which $PlayerLive 2>/dev/null`" ]; then
+		break
+	fi
+done
+
+for PlayerVod in $PlayersVod; do
+	if [ -n "`which $PlayerVod 2>/dev/null`" ]; then
+		break
+	fi
+done
+
+for PlayerRadio in $PlayersRadio; do
+	if [ -n "`which $PlayerRadio 2>/dev/null`" ]; then
+		break
+	fi
+done
+
+for Recorder in $Recorders; do
+	if [ -n "`which $Recorder 2>/dev/null`" ]; then
+		break
+	fi
+done
+RecDef="$Recorder"
+
+for ResTool in $ResTools; do
+	if [ -n "`which $ResTool 2>/dev/null`" ]; then
+		break
+	fi
+done
+ResDef="$ResTool"
+#----------------------------------------------------------------------------------------------------------------------------------
+PlayerSet="$PlayerLive $PlayerVod $PlayerRadio"
+#----------------------------------------------------------------------------------------------------------------------------------
+if [  `echo "$PlayerSet" | grep -c "NotFound"` = "1" ] && [ "$Wsl" = "0" ]; then
+	dialog --title "Error" --infobox "Sorry one or more Player was not found:\n\nPlayerLive=$PlayerLive  PlayerVod=$PlayerVod\n\nPlayerRadio=$PlayerRadio" 0 0; 
+	read < /dev/tty
+	exit
+fi
+#----------------------------------------------------------------------------------------------------------------------------------
+if [ "$Who" = "$Owner"  ]; then           # My own setup prefs :-). I'm the only crazy people using ROOT as default user.
+# ResProtocols="udp rtp udp http rtsp"
+    ResTool="hlsdl"
+    ResDef='hlsdl'
+    RecDef='hlsdl'
+    FFmpeg='ffmpeg5'
+    Savedir="$HOME/Film"
+	HlsdlEngine="mpv"
+	PlayerRadio="parole"
+	PlayerLive="QMPlay2"
+	PlayerVod="QMPlay2"
+	MonPlayer="mpv"
+	VodHelper="RaiNixVod"
+	SlinkPlayer='mplayer'
+	PipeRoot="- | xine -"
+fi
+#------------------------------------------------------------------------------------------
+for Terminal in $Terminals; do
+	if [ -n "`which $Terminal 2>/dev/null`" ]; then
+		break
+	fi
+done
+RecTerm="$Terminal"
+if [  "$NoTerm" = "1" ]; then
+    Terminal='noterm'
+fi
+if [  "$Terminal" = "NotFound" ] && [ "$Wsl" = "0" ]; then
+	dialog --title "Error" --infobox " Sorry none of the predefined terminals ($Terminals) found to play async tasks. " 0 0; 
+	sleep 3
+	exit
+fi
+#-------------------------------------------------------------------------------------------------------------------
+urldecode () {
+	local url_encoded="${1//+/ }"
+	printf '%b' "${url_encoded//%/\\x}"
+}
+#-------------------------------------------------------------------------------------------------------------------
+NormalizeName () {
+     ChName=$(echo "$ChName" | tr  ' ' '_' | sed -e "s|&quot;|'|g" -e "s|\&amp;|\&|g" -e "s|&amp;#x27;|'|g" -e "s|\&#x27;|'|g" -e "s|\&amp;|\&|g"  -e "s|\&#232;|e|g" -e "s|\&#224;|a|g" | tr -d ' \n\t\r' | tr '/' '-' | tr  "'" '_' | tr '"' ':' | tr '()' ':' | tr '[]' ':')
+}
+#-------------------------------------------------------------------------------------------------------------------
+RecNoTerm () {
+    LogFile="$Savedir/${ChName}_${Tag}.log"
+    if [ "$FFmpegOn" = "1" ]; then
+        nohup $FFmpeg $FFmpegOpt -y -i "$ThisLink" -vcodec copy -acodec  $AudioCodec $Savedir/${ChName}_${Tag}.$Ext > $LogFile &
+    fi
+#------------------------------------------------------------------------------------------------------------------
+    if [ "$Recorder" = "hlsdl" ]; then
+        nohup $Recorder $HlsdlVbr  -f  "$ThisLink" -o $Savedir/${ChName}_${Tag}.$Ext > $LogFile &
+    fi
+#------------------------------------------------------------------------------------------------------------------
+    if [ "$Recorder" = "youtube-dl" ]; then
+        nohup $Recorder --hls-use-mpegts  "$ThisLink" --output $Savedir/${ChName}_${Tag}.$Ext  > $LogFile &
+    fi
+#------------------------------------------------------------------------------------------------------------------
+    ThisRecord="$!"
+    dialog --title "$ChName started" --infobox "You can check the recording status into:\n$LogFile.\nYou can stop recording by the following command:\nkill -9 $ThisRecord\nHit ENTER to continue." 7 60
+    read < /dev/tty
+    sed -i "1s/^/Enter this command to stop recording:\n===========\n>> kill -9 $ThisRecord <<\n===========\n/" $LogFile
+}
+#------------------------------------------------------------------------------------------------------------------
+function Record () {
+    Cleanup
+    Tag=$(date +%Y%m%d_%H%M)
+    mkdir -p "$Savedir" 2>/dev/null
+    if [ "$Recorder" = "NotFound" ]; then
+        dialog --title "Recording failure" --infobox " Sorry, no recording tool found. Recording will not work. " 6 30
+        sleep 3
+	    return
+	fi
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$StreamType" = "Replay" ]; then    
+        Ext="$ReplRecFmt"
+    fi
+    #------------------------------------------------------------------------------------------------------------------- 
+    if [ "$StreamType" = "Live" ]; then
+        Ext="$LiveRecFmt"
+    fi
+   #-------------------------------------------------------------------------------------------------------------------
+    if [ "$StreamType" = "Radio" ]; then
+        Aac=$($Curl  -A "$UserAgent" "$ThisLink" | grep m3u8)
+        if [ "$Aac" = "" ] || [ "$AudioCodec" = "libmp3lame" ] || [ "$ThisMp3" != "" ]; then
+            Ext="mp3"
+        else
+            Ext="aac"
+        fi
+     fi
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$Link4k" = "1" ]; then    
+        Recorder="$FFmpeg"
+    fi
+    if [ "$Recorder" = "hlsdl" ] && [ "$AudioGroup" != "0" ]; then
+        Recorder="$FFmpeg"
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+   FFmpegOn=$(echo "$Recorder" | grep -Eic ffmpeg)
+#-------------------------------------------------------------------------------------------------------------------
+    NormalizeName
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$FFmpegOn" = "1" ]; then
+        echo "$FFmpeg $FFmpegOpt -y -i "$ThisLink" -vcodec copy -acodec $AudioCodec $Savedir/${ChName}_${Tag}.$Ext" >> $ScriptHome/$Me.log
+        Cmd="$FFmpeg -y -i '"$ThisLink"' -vcodec copy -acodec $AudioCodec $FFmpegOpt $Savedir/${ChName}_${Tag}.$Ext "
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$Recorder" = "hlsdl" ]; then
+        echo "$Recorder "$HlsdlVbr" -f  "$ThisLink" -o $Savedir/${ChName}_${Tag}.$Ext" >> $ScriptHome/$Me.log
+        Cmd="$Recorder "$HlsdlVbr" -f  '"$ThisLink"' -o $Savedir/${ChName}_${Tag}.$Ext"
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$Recorder" = "youtube-dl" ]; then
+        echo "$Recorder --hls-use-mpegts  '"$ThisLink"' --output $Savedir/${ChName}_${Tag}.$Ext" >> $ScriptHome/$Me.log
+        Cmd="$Recorder --hls-use-mpegts  '"$ThisLink"' --output $Savedir/${ChName}_${Tag}.$Ext"
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+ #  if [ "$Recorder" = "wget" ]; then
+ #      echo "$Recorder '"$ThisLink"' --output $Savedir/${ChName}_${Tag}.mp4" >> $ScriptHome/$Me.log
+ #      Cmd="$Recorder --user-agent='"$UserAgent"' -O $Savedir/${ChName}_${Tag}.mp4 '"$ThisLink"'"
+ #  fi   
+#------------------------------------------------------------------------------------------------------------------
+    ThisValid=$(echo "$ThisLink" | grep http | grep -Ec 'hmac|index|m3u8|mediapolis|mp4|mp3')
+    if [ "$ThisValid" = "0" ]; then
+        dialog --title "$ChName error" --infobox "Got an invalid link. May be a timeout occurred. Retry." 5 40
+        sleep 2
+        return
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+
+    dialog --title "$ChName starting" --infobox "Starting $ChName recording using $Recorder. " 6  50
+ #   if [ "$HideRecorder" = "1" ]; then
+ #       RecNoTerm
+ #       sleep 3 
+ #       return
+ #   fi 
+    if [ "$RecTerm" = "xterm" ]; then
+        xterm -T "$ChName"  $Hold -e "$Cmd" & 
+    fi
+    if [ "$RecTerm" = "konsole" ]; then
+        konsole --noclose -e  "$Cmd" &
+    fi
+    sleep 3
+}
+#---------------------      ---------------------------------------------------------------------
+function ctrl_c () {
+    clear
+    ResTidy
+    kill -9 $MyPid
+    exit
+}
+#------------------------------------------------------------------------------------------
+trap ctrl_c INT
+#------------------------------------------------------------------------------------------
+function Cleanup () {
+    if [ "$MultiProcess"  = "1" ]; then
+        return
+    fi
+    kill   $! 2>/dev/null
+    wait $! 2>/dev/null
+    return
+}
+#------------------------------------------------------------------------------------------
+TestSys () {
+    for command in curl sed grep awk dialog jq; do
+        if [ -z "`which $command 2>/dev/null`" ]; then
+            NOTFOUND="`echo "$NOTFOUND $command"`"
+        fi
+    done
+    if [ -n "$NOTFOUND" ]; then
+        echo "Comandi non trovati. The script will not work:"
+        echo $NOTFOUND
+        read < /dev/tty
+        exit 1
+    fi
+    if [ -z "`which $Recorder 2>/dev/null`" ]; then
+        clear 
+        echo "$Recorder not found. The recording feature is not available."
+        read null
+    fi
+}
+#-------------------------------------------------------------------------------------------
+ShowInfo () {
+    dialog --title "$BoxTitle" --infobox "$BoxMsg" 0 0
+    sleep $ShowInfoDelay
+    return
+}
+#-------------------------------------------------------------------------------------------------------------------
+SetEpgStatus () {
+    while [ 1 ]; do
+		EpgStatus=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "Set Epg prompt for live streams" 10 40 3 0 Off 1 On)
+		if [ "$EpgStatus" == "" ]; then
+		   return
+		fi
+        if ((EpgStatus >=0  && EpgStatus <= 1)); then
+            let EpgStatus=$EpgStatus
+            return
+        fi
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+SetHlsdlVbr () {
+    while [ 1 ]; do
+		RecVbrReply=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "VBR handler for HLSDL recorder" 10 40 3 0 Off 1 On)
+		if [ "$RecVbrReply" == "" ]; then
+		   return
+		fi
+        if ((RecVbrReply >=0  && RecVbrReply <= 1)); then
+            let RecVbrDef=$RecVbrReply
+            if [ "$RecVbrReply" = "1" ]; then
+                HlsdlVbr=""
+            else
+                HlsdlVbr="-b"
+		   fi
+           return
+        fi
+    done
+}
+#-------------------------------------------------------------------------------------------
+TestPlay () {
+    if [ "$Terminal" = "konsole" ] || [ "$Wsl" = "1" ]; then
+       return
+    fi
+    if [ "$Running" != "" ]; then
+       Active=$(ps -af | grep $ThisPlayer)
+    fi
+    if [ "$Active" = "" ]; then
+       Running=""
+       Alerted="1"
+       BoxTitle="Stream error"
+       BoxMsg="Sorry. $StreamOrigin stream not found or not playable. Check Xterm window & $Me log for details"
+       ShowInfo
+       read null
+       Cleanup
+    fi
+}
+#-------------------------------------------------------------------------------------------------------------------
+Cinema () {
+    unset CatMenu
+    dialog --title "Rai Movie working.." --infobox "Movie titles are loading. This may take time. Pls wait" 4 63
+    CatPage=$($Curl  -L  -A "$Ua"  "$AnchorCine/tipologia/film/index.json" | jq .contents[])
+    CatNames=$(echo "$CatPage" |  jq -r '.contents[] | select(.type == "RaiPlay Genere Item" )'  2>/dev/null | jq -r .name | tr ' ' '_')
+    CatLinks=$(echo "$CatPage" | jq -r '.contents[] | select(.type == "RaiPlay Genere Item" )'  2>/dev/null | jq -r .path_id)
+    Index=0
+    for Cat in $CatNames; do
+        let Index++ 
+        CatMenu=("${CatMenu[@]}" $Index "$Cat" )
+    done 
+    CatCnt="$Index"
+    while [ 1 ]; do
+        Reply=$(dialog  --title "$Me $Version $Codename" --default-item "$DefCat" --stdout --ok-label 'Proceed' --cancel-label 'Go Back' --menu "Available categories: $CatCnt" 0 40 0 "${CatMenu[@]}")
+        Button="$?"
+        if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
+            return
+        fi
+        DefCat="$Reply"
+        CatName=$(echo "$CatNames" | sed -n ${Reply}p)
+        CatLink=$(echo "$CatLinks" | sed -n ${Reply}p)
+        CatMovies
+    done
+}
+#---------------------------------------------------------------------------------------------------------------------
+CatMovies () {
+    BoxMsg="Retrieving movies list.\n\nCategory: $CatName\n\n"
+	BoxTitle="$Me $Version $Codename"
+	ShowInfo
+	CatContent=$($Curl -L -A "$Ua" "$AnchorCine$CatLink" |  jq -r ".contents[]")
+    ThisCatLinks=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .path_id)
+    ThisCatTitles=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .name)
+    ThisCatTitles=$(echo "$ThisCatTitles" | sed -e "s|&#248;|ø|g" -e "s|&#233;|é|g" -e "s|&#242;|ò|g" -e "s|&#249;|ù|g" -e "s|&#39;|'|g" -e "s|&#224;|à|g" -e "s|&#232;|è|g" -e "s|&#x27;|'|g" -e 's|\&amp;|\&|g' | sed -e 's|^_||g')
+    unset CatContentMenu
+    Index=0
+	while read MovieTitle; do
+        let Index++ 
+        CatContentMenu=("${CatContentMenu[@]}" $Index "$MovieTitle" )
+	done <<< "$ThisCatTitles"
+	DefChan=""
+	while [ 1 ]; do
+        Reply=$(dialog  --title "$Me $Version $Codename" --default-item "$DefChan"  --ok-label 'Proceed' --cancel-label 'Go Back' --stdout --menu "Available movies for category $CatName: $Index" 22 60 15 "${CatContentMenu[@]}")
+        Button="$?"
+        if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
+            return
+        fi
+        DefChan="$Reply"
+        let ChanPos=$Reply*2-1
+        MovieName="${CatContentMenu[$ChanPos]}"
+        MovieHome=$(echo "$ThisCatLinks" | sed -n ${Reply}p)
+        ChName="$MovieName"
+        GetLink
+        AskAction
+	done
+}
+#--------------------------------------------------------------------------------------------------------------------------------------
+function GetLink () {
+	BoxMsg="Retrieving:\n\n$MovieName\n\ninfo."
+	BoxTitle="$Me $Version $Codename"
+	ShowInfo
+    MovieJson=$($Curl  -A "$UserAgent" "$AnchorCine$MovieHome")
+    if [ "$Debug" = "1" ]; then echo "$MovieJson" > $ScriptHome/RaiMovJson.txt; fi
+    MoviePageUrl=$(echo "$MovieJson" | grep -o 'first_item_path.*' | grep -o '/video/.*' | cut -d '"' -f1)
+    RelinkerData=$($Curl  -A "$UserAgent" "$AnchorCine$MoviePageUrl")
+    Relinker=$(echo "$RelinkerData" | grep -o '"content_url".*' | cut -d '"' -f4)
+    Relinker=$(echo "$Relinker" | sed -e 's|^ ||g' -e 's| $||g')
+    ThisPlayer="$PlayerVod"
+    ThisLink="$Relinker"
+    Summ=$(echo "$MovieJson" | awk -F '"description"' '{print $2}' | awk -F ',"label"' '{print $1}' | tr -d '\\'  |  cut -d '"' -f2- | cut -d '"' -f1- | cut -d '"' -f1- | awk -F '",' '{print $1}')
+    Summ=$(echo "$Summ" | cut -c 1-500) # | sed 's/\(.*\) .*/\1/')
+    Info="\n\n$Summ....\n\n"
+}
+#-------------------------------------------------------------------------------------------------------------------
+Replay () {
+    Pos="0"
+    Info=""
+    unset ReplayMenu
+    ReplayLink="$AnchorReplayApp/$ChanPath/$Day.json"
+    PageReplay=$($Curl -A "$UserAgent" "$ReplayLink" | jq -r .)
+    Time=$(echo "$PageReplay"  | jq -r .events[].hour)
+    Name=$(echo "$PageReplay" | jq -r .events[].name)
+    Links=$(echo "$PageReplay"  | jq -r .events[].path_id)
+    if [ "$AvailOnly" = "1" ]; then
+        PageReplay=$(echo "$PageReplay" | jq '.events[] | select(.path_id!="")')
+        Time=$(echo "$PageReplay"  | jq -r .hour)
+        Name=$(echo "$PageReplay" | jq -r .name)
+        Links=$(echo "$PageReplay"  | jq -r .path_id)
+    fi
+    for Token in $Time; do
+        let Pos++
+        ReplayMenu=("${ReplayMenu[@]}" $Token "`echo "$Name" | sed -n ${Pos}p | tr -d '"'`")
+    done
+    while [ 1 ]; do
+        RecName=""
+        Prog=$(dialog --title " RaiReplay $RepChName $DayName " --default-item "$Prog" --ok-label 'Proceed' --cancel-label "Go Back" --stdout --menu "Mind, some programs are not allowed on REPLAY by RAI." 0 60 0 "${ReplayMenu[@]}")
+        Button="$?"
+        if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
+            return
+        fi
+        Pos=$(echo "$Time" | grep -n "$Prog" | cut -d ':' -f1)
+        HomeLink=$(echo "$Links" | sed -n ${Pos}p)
+        ProgData=$($Curl -A "$UserAgent" "$AnchorHome/$HomeLink")
+        ThisLink=$(echo "$ProgData" | jq -r .video.content_url)
+        Info=$(echo "$ProgData" | jq -r .description)
+        ThisName=$(echo "$Name" | sed -n ${Pos}p)
+        if [ "$ThisLink" == "" ]; then
+            BoxTitle="Link failure"
+            BoxMsg="Sorry,$ThisName broadcast is not available"
+            ShowInfo
+            continue
+        fi
+        if [ "$Wsl" = "1" ]; then
+            ThisPlayer="$PlayerVodW"
+        else
+            ThisPlayer="$PlayerVod"
+        fi
+        Relinker="$ThisLink"
+        ChName="$ThisName"
+        AskAction
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+GetChan () {
+    AvailOnly="0"
+    ChansData=$($Curl -A "$UserAgent" "$AnchorReplay"  | grep -o 'channels.*' | cut -d "'" -f2 | cut -d "'" -f1 | jq -r .)
+    ChansPath=$(echo "$ChansData" | jq -r .[].absolute_path)
+    ReplayChans=$(echo "$ChansData" | jq -r .[].label)
+    unset RepMenu 
+    Index=0
+    AvailOnly="0"
+    while [ "$Index" -lt "10" ]; do
+        let Index++
+        read RepChan
+        RepMenu=("${RepMenu[@]}" $Index "$RepChan" )
+    done <<< "$ReplayChans"
+    while [ 1 ]; do
+        Chan=$(dialog --title " $Me $Version " --default-item "$Chan"  --cancel-label "Go Back" --stdout --menu "Rai Replay Channels: $Index > Select a channel" 0 60 0 "${RepMenu[@]}")
+        Button="$?"
+        if [ "$Chan" == "" ]; then
+			return
+        fi
+        ChanPath=$(echo "$ChansPath" | tr '\n' ' ' | cut -d ' ' -f$Chan)
+        let NamePos=$Chan*2-1
+        RepChName="${RepMenu[$NamePos]}"
+        GetDate
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+# Linux or * BSD conditional statement for RaiReplay
+GetDate () {
+    Linux=$(uname | grep -c -i linux)
+    if [ "$Linux" != "0" ]; then
+        Week=`for i in {-7..8}; do date -d "$i day ago" +%d-%m-%Y" "%A; done`
+    else
+        Week=`for i in {1..8}; do date -v "-"$i"d" "+%d-%m-%Y  %A"; done`
+     fi
+    Status="All"
+    Status2='Available'
+    while [ 1 ]; do
+        Day=$(dialog --title "Rai Replay $RepChName" --default-item "$Day" --extra-button --extra-label "Show $Status2 streams" --cancel-label "Go Back" --stdout --menu "$Status $RepChName replay streams shown.\nSelect a date:" 0 50 0 $Week)
+        Button="$?"
+        if [ "$Button" = "3" ]; then
+            if [ "$AvailOnly" = "0" ]; then
+                AvailOnly="1"
+                Status="Available"
+                Status2="All"
+                continue
+            fi
+            if [ "$AvailOnly" = "1" ]; then
+                AvailOnly="0"
+                Status="All"
+                Status2="Available"
+                continue
+            fi
+        fi
+        if [ "$Day" == "" ]; then
+			return
+        fi
+        DayName=$(echo $Week | grep -o "$Day.*"| cut -d ' ' -f2)
+        Replay 
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+RadioRai () {
+    unset  RadioMenu
+    RadioPage=$($Curl -A "$UserAgent" "$AnchorRadio/dirette.json" | jq -r .contents | grep -E '"name"|"path_id"')
+    RadioNames=$(echo "$RadioPage" | grep '"name"' | cut -d '"' -f4) 
+    RadioLinks=$(echo "$RadioPage"    | grep '"path_id"' | cut -d '"' -f4)
+    RadioLive=$(echo "$RadioNames"   | wc -l)
+    Index=0
+    while read Radio; do
+        let Index++
+        RadioMenu=("${RadioMenu[@]}" $Index "$Radio" )
+    done <<< "$RadioNames"
+    let Index++
+    RadioMenu=("${RadioMenu[@]}" $Index "Change Radio Player" )
+    MaxItems="$Index"
+    while [ 1 ]; do
+		RadioChan=$(dialog --title " $Me $Version " --default-item "$RadioChan" --extra-button --extra-label 'Epg'  --ok-label "Proceed"  --cancel-label "Go Back" --stdout --menu "Radio Rai channels:$RadioLive > Pls select a station" 0 60 0 "${RadioMenu[@]}")
+		Button="$?"
+        if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
+            return
+        fi
+        ChName=$(echo "$RadioNames" | sed -n ${RadioChan}p)
+        ChJson=$(echo "$RadioLinks" | sed -n ${RadioChan}p)
+        LoadEpg
+        if [ "$Button" = "3" ]; then
+          ShowEpg
+            continue
+        fi
+        if ((RadioChan >= 1 && RadioChan <= RadioLive)); then
+            ThisLink=$($Curl -A "$UserAgent" "$AnchorRadio$ChJson" | jq -r . | grep mediapolis | tail -1 | cut -d '"' -f4)
+            echo "RadioRai $ChName $ThisPlayer $ThisLink" >> $ScriptHome/$Me.log
+            ChName=$(echo "$ChName" | tr -d "\r\n\t" | tr  ' ' '_')
+            Cmd="$PlayerRadio"
+            if [ "$Wsl" = "1" ]; then
+                PlayerRadio="$PlayerRadioW"
+            fi
+            ThisPlayer="$PlayerRadio"
+            Info="Program:$ProgName\n\nStarted at: $ProgStart Duration: $ProgLast\n\n$ProgDesc\n"
+            Relinker="$ThisLink"
+            AskAction
+            continue
+        fi
+        if [ "$RadioChan" = "$MaxItems" ]; then
+            NewPlayer=$(dialog --stdout --inputbox " Please enter a new radio player " 0 0 $PlayerRadio) 
+            if [ "$NewPlayer" != "" ]; then
+                PlayerRadio="$NewPlayer"
+                ThisPlayer="$PlayerRadio"
+            fi
+        fi 
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+LoadEpg () {
+    OnAirJson=$($Curl -A "$UserAgent" "$AnchorRadio/palinsesto/onAir.json")
+# echo "$OnAirJson" > $ScriptHome/RaiOnAir.json
+    if [ "$OS" = "linux" ]; then   
+        ChName=$(echo "$ChName" | sed -e 's|è|e|')
+    else
+        ChName=$(echo "$ChName" | tr -s '/è/e/') 
+    fi  
+    Channels=$(echo "$OnAirJson" | jq -r  ".on_air[].channel")
+    OnAirPos=$(echo "$Channels" | grep -nFx "$ChName" | cut -d ':' -f1)
+    let OnAirPos=$OnAirPos-1
+    ChanRadio=$(echo "$OnAirJson" | jq -r ".on_air[$OnAirPos].channel")
+    ProgStart=$(echo "$OnAirJson"   | jq -r ".on_air[$OnAirPos].currentItem.hour")
+    ProgLast=$(echo "$OnAirJson"     | jq -r ".on_air[$OnAirPos].currentItem.duration")
+    ProgName=$(echo "$OnAirJson"  | jq ".on_air[$OnAirPos].currentItem.name")
+    ProgDesc=$(echo "$OnAirJson"    | jq ".on_air[$OnAirPos].currentItem.description" | tr -d '\\' | grep -v null | tr -s ' ')
+  }
+#-------------------------------------------------------------------------------------------------------------------
+ShowEpg () {
+    dialog --title "$ChName info:" --infobox "* $ChName * -- press ENTER to Go Back\n\n$ProgName\n\nStarted at: $ProgStart Duration: $ProgLast \n\n$ProgDesc\n" 0 0
+    Info="* $ChName *\n\n$ProgName\n\nStarted at: $ProgStart Duration: $ProgLast\n\n$ProgDesc\n"
+    read</dev/tty
+}
+#------------------------------------------------------------------------------------------------------------------
+PlayLive () {
+    if [ "$EpgStatus" = "1" ]; then
+        EpgData=$(echo "$OnAirHome"  |  jq  -r ".on_air[].currentItem | .channel,.hour,.name,.description")
+        ThisEpg=$(echo "$EpgData"  | grep -A3 "$ChName")
+        ThisEpgDesc=$(echo "$ThisEpg"  | sed -n 4p | tr -d '\\')
+        ThisEpgName=$(echo "$ThisEpg"  | sed -n 3p)
+        ThisEpgHour=$(echo "$ThisEpg"    | sed -n 2p)
+        ThisEpgChan=$(echo "$ThisEpg"   |  sed -n 1p)
+        Info="Program started at:$ThisEpgHour\n\nTitle:$ThisEpgName\n\n$ThisEpgDesc"
+        InfoShort="Program started at:$ThisEpgHour\n\nTitle:$ThisEpgName"  
+    fi
+    if [ "$ThisEpg" = "" ]; then
+        Info="Sorry no EPG data availables for this channel.\n\nIt may be a testing channel"
+    fi
+    ChName=$(echo "$ChName" | tr -d "\r\n\t " | sed -e 's|Rai|Rai |g')
+    ThisLink=$($Curl  -A "$UserAgent" "$Relinker&output=20")
+    Title=""
+#----------------------------------------------------------------------------------------------------------------
+    if [ "$Wsl" = "1" ]; then
+        ThisPlayer="$PlayerLiveW"
+    else
+        ThisPlayer="$PlayerLive"
+    fi
+    AskAction
+}
+#-----------------------------------------------------------------------------------------------------------------------------
+SetPlayerLive () {
+while [ 1 ]; do
+    PlayersList="mpv QMPlay2 smplayer vlc parole bomi streamlink hlsdl ffplay ffmpeg"
+    PlayersMenu="1 mpv 2 QMPlay2 3 smplayer 4 vlc 5 parole 6 bomi 7 streamlink 8 hlsdl 9 ffplay 10 ffmpeg"
+    Reply=$(dialog --title " $Me $Version $CodeName " --default-item "1" --ok-label 'Set' --cancel-label "Goback" --stdout --menu "Select a player for live streams: " 0 40 10 $PlayersMenu)
+    Button=$?
+    if [ "$Reply" = "" ]; then
+        return
+    fi
+    MyPlayer=$(echo "$PlayersList" | tr -s ' ' | cut -d ' ' -f $Reply)
+    if [ -n "`which $MyPlayer 2>/dev/null`" ]; then
+        if [ "$Who" = "$Owner"  ]; then   
+            PlayerLive="$MyPlayer"
+            PlayerVod="$MyPlayer"
+            return
+        fi
+        PlayerVod="$MyPlayer"
+        PlayerLive="$MyPlayer"
+		return
+	fi
+	clear
+	dialog --title "Error" --infobox "The player $MyPlayer was not found into you system. Select a new one" 5 35;
+	sleep 4
+done
+}
+#-----------------------------------------------------------------------------------------------------------------------------
+MapFFmpeg () {
+    if [ "$MapFFmpeg" = "1" ]; then
+        Manifest=$($Curl -A "$UserAgent" "$ThisLink")
+        VBest=$(echo "$Manifest"   | grep RESOLUTION | grep -o  'BANDWIDTH.*' | cut -d '=' -f2 | cut -d ',' -f1 | sort -nr | head -1)
+        Vtrack=$(echo "$Manifest"  | grep RESOLUTION | grep -o  'BANDWIDTH.*' | grep -n "$VBest"   | cut -d ':' -f1 | head -1)
+        if [ "$Vtrack" != "" ]; then
+            Vtrack=$(( $Vtrack - 1 ))
+        else
+            Vtrack=0
+        fi
+        Atrack=$(echo "$Manifest" | grep '#EXT' | grep LANGUAGE | grep -in ita | cut -d ':' -f1)
+        if [ "$Atrack" != "" ]; then
+            Atrack=$(( $Atrack - 1 ))
+        else
+            Atrack=0
+        fi
+        if [ "$Atrack" = "" ] && [ "$Vtrack" = "" ]; then
+            Vmap=""
+        else
+            Vmap="-map 0:v:$Vtrack'?' -map 0:a:$Atrack'?'"
+        fi
+    fi
+}
+#-----------------------------------------------------------------------------------------------------------------------------
+Restream () {
+    ResTidy
+    ResSetup
+    ResLoad
+    Vmap=""
+    if [ "$StreamType" = "Replay" ]; then    
+        ResTool="$FFmpeg"
+    fi
+    VideoLink="$ThisLink"
+    ThisHls=$(echo "$ThisLink" | grep -Ec 'hls|m3u8')
+    if [ "$ThisHls" != "0" ] && [ "$StreamType" != 'Replay' ]; then
+        MapFFmpeg
+    fi
+    if [ "$StreamOrigin" = "Radio" ]; then
+        Vmap=""
+    fi
+#-----------------------------------------------------------------------------------------------------------------------------
+#-------------  Here evaluate requested Restreaming protocols and setup ----------------------------
+#-----------------------------------------------------------------------------------------------------------------------------
+    if [ "$ResProt" = "http" ] ; then # Allow sub choices for HTTP restream protocol
+        if [ "$ResVlc" = "1" ] || [ "$Link4k" = "1" ] ; then
+            ResTool='vlc'
+        fi
+        if [ "$ResTool" = "hlsdl" ]; then
+            xterm $Hold $Iconic -T "$ChName" -e "hlsdl -b -o - '"$VideoLink"' | $FFmpeg -i - -c copy -f mpegts - | vlc - -I dummy -q --volume-step=10 - --sout '#standard{access=http,mux=ts,dst=$LocalIp:8530}'" &
+        fi
+        if [ "$ResTool" = "$FFmpeg" ]; then
+            xterm $Hold $Iconic -T "$ChName" -e "$FFmpeg -i  '"$VideoLink"'  -c copy  $Vmap -f mpegts - | vlc - -I dummy -q --volume-step=10 - --sout '#standard{access=http,mux=ts,dst=$LocalIp:8530}'" &
+        fi
+        if [ "$ResTool" = "vlc" ] && [ "$Link4k" = "0" ]; then
+            xterm $Hold $Iconic -T "$ChName" -e "hlsdl -b -o - '"$VideoLink"' | vlc - -I dummy -q --volume-step=10 - --sout '#standard{access=http,mux=ts,dst=$LocalIp:8530}'" &
+        fi
+        if [ "$ResTool" = "vlc" ] && [ "$Link4k" = "1" ] ; then
+            xterm $Hold $Iconic -T "$ChName" -e "vlc -I dummy  '"$VideoLink"'  --volume-step=10 - --sout '#standard{access=http,mux=ts,dst=$LocalIp:8530}'" &
+        fi
+        ResPid="$!"
+        disown
+    fi
+    if [ "$ResProt" = "udp" ]; then
+        xterm $Hold $Iconic  -T "$ChName" -e  $FFmpeg -i "$VideoLink" -acodec copy -vcodec h264 -y  -f mpegts $Target &
+        ResPid="$!"
+        disown
+    fi
+    if [ "$ResProt" = "rtp" ]; then
+        xterm $Hold $Iconic -T "$ChName" -e "$FFmpeg -i  '"$VideoLink"'  -c copy -b 3200k  -bsf:v h264_mp4toannexb $Vmap -f rtp_mpegts  $Target" &
+        ResPid="$!"
+        disown
+    fi
+    if [ "$ResProt" = "rtsp" ]; then
+        if [ "$ResTool" = "$FFmpeg" ]; then
+            xterm $Hold $Iconic -T "$ChName" -e "$FFmpeg  -re -stream_loop -1 -i '"$VideoLink"' -c copy -rtpflags latm $Vmap -f rtsp -rtsp_transport tcp $Target"  &
+        else
+            xterm $Hold $Iconic  -T "$ChName" -e "hlsdl -b '"$VideoLink"' -o - | $FFmpeg  -re -stream_loop -1 -i - -c copy -rtpflags latm -f rtsp -rtsp_transport tcp '"$Target"'"  &
+        fi
+        ResPid="$!"
+        disown
+    fi
+    if [ "$ResProt" = "rtmp" ]; then
+       if [ "$ResTool" = "$FFmpeg" ]; then
+            xterm $Hold $Iconic -T "$ChName" -e "$FFmpeg -re -i '"$VideoLink"' -vcodec libx264 -vprofile baseline -acodec aac -strict -2 -f flv  $Target" &
+           else
+            xterm $Hold $Iconic  -T "$ChName" -e "hlsdl -b '"$VideoLink"' -o - | $FFmpeg -re -i - -vcodec libx264 -vprofile baseline -acodec aac -f flv '"$Target"'"  &
+         fi
+         ResPid="$!"
+        disown
+    fi
+    $ReChecker
+}
+#-----------------------------------------------------------------------------------------
+ResCheck () {
+    ReCheck=0
+    IsStreaming="00"
+    if [ "$Remonitor" = "1" ]; then
+        while [ 1 ]; do
+            let ReCheck++
+            sleep 3
+            IsStreaming=$(ps -af | grep -E "$LocalIp:85|239.101.101.1:1234|$LocalIp:1935" | grep  "$ResPid")  
+            if [ "$IsStreaming" != "00" ]; then
+                ResBuff
+                ResMon
+                return
+            fi
+            if [ "$ReCheck" = "10" ]; then
+                dialog  --title "Restreaming failed" --infobox "$ChName failed to be restreamed on \n$Target\n\nCheck the XTERM for details." 10 45
+                sleep 4
+                return
+            fi
+         done
+    fi
+}
+#----------------------------------------------------------------------------------------------------------------------------------- 
+ResMon () {
+    if [ "$Remonitor" = "0" ]; then
+        return
+    fi
+#-----------------------------------------------------------------------------------------------------------------------------------    
+    if [ "$MonPlayer" =  "mpv" ]; then
+        nohup mpv --title="$ChName-on-$Target" --force-window=immediate --no-ytdl --autofit=240x160  --volume=10 --cache=yes --cache-secs=10 $Target >/dev/null 2>&1 &
+        MonPid="$!"
+        disown
+        return
+    fi
+    if [ "$MonPlayer" =  "ffplay" ]; then
+        nohup ffplay -loglevel panic -nostats -window_title "$ChName-on-$Target" -volume 2 -vf  scale=240:160 $Target >/dev/null 2>&1 &
+        MonPid="$!"
+        disown
+        return
+    fi
+    if [ "$MonPlayer" =  "vlc" ]; then
+        nohup vlc --meta-title "$ChName-on-$Target"  --no-audio "$Target"  >/dev/null 2>&1 &
+        MonPid="$!"
+        disown
+        return
+    fi
+    if [ "$MonPlayer" =  "mplayer" ]; then
+        nohup mplayer -title "$ChName-on-$Target" -xy 240  -volume 1 $Target >/dev/null 2>&1 &
+        MonPid="$!"
+        disown
+        return
+    fi
+    nohup $MonPlayer $Target >/dev/null 2>&1 &
+    MonPid="$!"
+    disown
+}
+#-----------------------------------------------------------------------------------------------------------------------------------
+ResLoad () {
+    dialog  --title "Restreaming" --infobox "$ChName  restream loading data.\n\nPls keep calm and wait!" 6 50
+}
+#-----------------------------------------------------------------------------------------------------------------------------------
+ResBuff () {
+    dialog  --title "Restreaming" --infobox "$ChName  restream starting on:\n$Target\n\nThe monitor should raise within a few secs.\n\nIf it doesn't or crashes check the xterm window content\n\nBuffering, pls wait." 9 50
+    sleep 5
+}
+#------------------------------------------------------------------------------------------------------------------------------
+ResTidy () {
+    ResPids=$(ps -af | grep -E "$LocalIp:85|239.101.101.1:1234|$LocalIp:1935" | tr -s ' ' | cut -d ' ' -f2 | sort -u | tr '\n' ' ')
+    for Pid in $ResPids; do
+        kill -9 $Pid 2>/dev/null
+    done
+}
+#------------------------------------------------------------------------------------------------------------------------------
+ResSetup () {
+    ResProt=$(echo "$ResProtocols" | cut -d " " -f1)
+    if [ "$ResProt" = "http" ]; then
+        Target="http://$LocalIp:8530"
+    fi
+    if [ "$ResProt" = "udp" ]; then
+        Target="udp://239.101.101.2:1234"
+    fi
+    if [ "$ResProt" = "rtp" ]; then
+        Target="rtp://239.101.101.1:1234"
+    fi
+    if [ "$ResProt" = "rtsp" ]; then
+        Target="rtsp://$LocalIp:8554/live"
+    fi
+    if [ "$ResProt" = "rtmp" ]; then
+        Target="rtmp://$LocalIp:1935/live"
+    fi
+    kill -9 $MonPid 2>/dev/null
+    kill -9 $ResPid  2>/dev/null
+ }
+#----------------------------------------------------------------------------------------------------------------
+CheckPlayable () {
+    Playable=0; ThisDash=0; ThisF4m=0; ThisHls=0; ThisMp4=0
+    ThisLink=$($Curl  -A "$UserAgent" "$Relinker&output=20")
+    ThisHls=$(echo "$ThisLink" | grep -Ec 'm3u8|hls')
+    ThisMp3=$(echo "$ThisLink" | grep -Ec 'mp3')
+    ThisDash=$(echo "$ThisLink" | grep -Ec 'dash|mpd')
+    ThisF4m=$(echo "$ThisLink" | grep -Ec 'f4m')
+#----------------------------------------------------------------------------------------------------------------
+    if [ "$ThisHls" != "0" ]; then
+        Manifest=$($Curl -A "$UserAgent" "$ThisLink")
+        AudioGroup=$(echo "$Manifest" | grep -c 'AUDIO,GROUP-ID')
+        Aeskey=$(echo "$Manifest" | grep -c 'SAMPLE-AES')
+        Drmkey=$(echo "$Manifest" | grep -c 'dash')
+        if [ "$Drmkey" != "0" ] || [ "$Aeskey" != "0" ]; then
+            echo "$ChName is protected by encryption and not playable on Linux"
+            read < /dev/tty
+            return
+        fi
+    else
+         ThisMp4=1
+    fi
+    Playable=1
+}
+#------------------------------------------------------------------------------------------------------------------------------
+AskAction () {
+    CheckPlayable
+    if [ "$Playable" = "0" ]; then
+        return
+    fi
+    Link4k=$(echo "$ChName" | grep -ic 4K)
+    if  [ "$Link4k" = "1" ] && [ "$Who" != "$Owner" ]; then   # set any value except 1 to allow restream 4k
+        ResLabel=''                                                     # patch Change Label value
+    else
+        ResLabel='3 Restream off'                              # patch Change Label value
+    fi
+    ResTool="$ResDef"
+    Recorder="$RecDef"
+    Info=$(echo "$Info" | sed -e 's|null|n/a|g')
+    while [ 1 ]; do
+        Cleanup
+        if [ "$Lasts" != "" ]; then
+            Lasts="** Duration:$Lasts **"
+        fi
+#---------------- init patch for Slack Dialog --------------------#
+        dialog --ok-label 'Proceed' --msgbox "$ChName $Lasts\n\n${Info}\n\nHit ENTER to choice an action:" 0 0
+        response=$(dialog --ok-label 'Proceed' --cancel-label "GoBack"  --stdout --radiolist "Stream: $ChName\n${InfoShort}\n\nSelect an option with TAB:\n" 0 0 0  1 Play on 2 Record off  $ResLabel)
+#        response=$(dialog --ok-label 'Proceed' --cancel-label "GoBack"  --stdout --radiolist "$ChName $Lasts\n\n${Info}\n\nSelect an option:\n" 0 0 0  1 Play on 2 Record off  $ResLabel)
+        Button=$?
+        if [ "$Button" = "255" ] || [ "$Button" = "1" ]; then
+            return
+        fi
+#---------------- end patch for Slack Dialog --------------------#
+        if [ "$ThisHls" != "1" ]; then       # Hlsdl works only on hls flows
+            ResTool="$FFmpeg"
+            Recorder="$FFmpeg"
+        fi
+        if [ "$response" = "1" ]; then
+            RunPlayer
+            return
+        fi
+        if [ "$response" = "2" ]; then
+            Record
+            RecordingPids="$RecordingPids $!"
+            return
+        fi
+        if [ "$response" = "3" ]; then
+            if  [ "$Link4k" = "1" ] && [ "$Who" != "$Owner" ]; then   # set any value except 1 to allow restream 4k
+                 return
+            fi
+            Restream
+            return
+        fi
+    done
+}
+#-------------------------------------------------------------------------------------------------------------------
+RunPlayer () {
+    PlayerOpt=""
+    WinTitle=""
+    ThisValid=$(echo "$ThisLink" | grep http | grep -Ec 'hmac|index|m3u8|mediapolis|mp4|mp3')
+    if [ "$StreamType"="Radio" ]; then
+        killall -9 "$ThisPlayer" 2>/dev/null
+    fi
+    if [ "$ThisValid" = "0" ]; then
+        dialog --title "$ChName error" --infobox "Got an invalid link. May be a timeout occurred. Retry." 5 40
+        sleep 2
+        echo "$ThisLink" >> $ScriptHome/RaiLinkFail.txt; 
+        return
+    fi
+    NormalizeName
+    dialog --title "$ChName starting" --infobox "Starting $ChName using $ThisPlayer " 6 50
+    if [ "$ThisPlayer" = "mpv" ]; then
+         WinTitle="--title='$ChName'"
+         PlayerOpt="$MpvOpt --force-window"
+    else
+        MpvQuality=""
+    fi
+    
+    if [ "$ThisPlayer" = "vlc" ]; then
+        WinTitle="--meta-title='$ChName' --avcodec-hw=none"
+    fi
+    if [ "$ThisPlayer" = "QMPlay2" ]; then
+        PlayerOpt="--opennew"
+        if [ "$StreamType" = "Live" ]; then
+            :
+        fi
+    fi
+    if [ "$ThisPlayer" = "hlsdl" ]; then
+        kill $ThisHlsPid 2>/dev/null
+        clear
+        PlayerOpt='-b'
+        NowRun=0
+        Hold=""
+        if [ "$HlsdlEngine" = "mpv" ]; then
+            Pipe='-o - | mpv - --autofit=800x600'
+            xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -b '$ThisLink' $Pipe --title='$ChName-by-$ThisPlayer'" &
+            NowRun=1
+        fi
+        if [ "$HlsdlEngine" = "vlc" ]; then
+             Pipe='-o - | vlc - -q  --avcodec-hw=none'
+             xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -b '$ThisLink' $Pipe --meta-title='$ChName-by-$ThisPlayer'" &
+             NowRun=1
+        fi
+        if [ "$HlsdlEngine" = "mplayer" ]; then
+            Pipe='-o - | mplayer - -xy 800'
+            xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -b '$ThisLink' $Pipe -title '$ChName-by-$ThisPlayer'" &
+            NowRun=1
+        fi
+        if [ "$HlsdlEngine" = "xine" ]; then
+            Pipe='-o - | xine -'
+            xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -b '$ThisLink' $Pipe" &
+            NowRun=1
+        fi
+        if [ "$NowRun" = "0" ]; then
+            Pipe="-o - | $HlsdlEngine -"
+            xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -b '$ThisLink' $Pipe" &
+        fi
+        sleep 2
+        ThisHlsPid=$(ps -ef | grep hlsdl | grep "xterm" | grep "$HlsdlEngine" | tr -s ' ' | cut -d ' ' -f2)
+    fi
+    
+    if [ "$ThisPlayer" = "streamlink" ]; then
+        WinTitle="-t '$ChName'"
+        Pipe="best"
+        PlayerOpt=""
+        MpvQuality=""
+        Hold='-iconic'
+        xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer $WinTitle '--player=$SlinkPlayer' '$ThisLink' $Pipe" &
+        disown
+    fi
+    
+    if [ "$ThisPlayer" = "$FFmpeg" ]; then
+        killall -9 $FFmpeg 2>/dev/null
+        kill     -9 $ThisX  2>/dev/null
+        Hold='-iconic'
+        Pipe="- | $SlinkPlayer -"
+        if [ "$Who" = "$Owner"  ]; then   
+            Pipe="$PipeRoot"
+        fi
+        xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer -i '$ThisLink'  -c copy -y   $Vmap -f mpegts $Pipe" &
+        ThisX="$!"
+        disown
+    fi
+    
+    if [ "$ThisPlayer" != "hlsdl" ] && [ "$ThisPlayer" != "streamlink" ]; then
+        if [ "$Terminal" = "xterm" ]; then
+            xterm -T "$ChName" $Hold $Iconic -e "$ThisPlayer $WinTitle $PlayerOpt $MpvQuality '$ThisLink'" &
+        fi 
+        if [ "$Terminal" = "konsole" ]; then
+            konsole --noclose -e $ThisPlayer $WinTitle  $PlayerOpt $MpvQuality "$ThisLink" &  
+        fi
+        if [ "$Terminal" = "noterm" ]; then
+            nohup $ThisPlayer $WinTitle $PlayerOpt $MpvQuality "$ThisLink" >/dev/null 2>&1 &
+            disown
+        fi
+    fi
+    Running="$!"
+    echo  "$ChName $Org Relinker:  $Relinker"  >> $ScriptHome/$Me.log
+    echo  "$ChName by $ThisPlayer: $ThisPlayer $WinTitle $PlayerOpt $MpvQuality "$ThisLink" "$Pipe""  >> $ScriptHome/$Me.log
+    sleep 4
+    TestPlay
+}
+#------------------------------------------------------------------------------------------------------------------
+GetBlock () {
+	BoxMsg="Retrieving info about:\n\n$ItemName\n\n"
+	BoxTitle="$Me $Version $Codename"
+	ShowInfo
+	if [ "$Debug" = "1" ]; then echo "$ItemJson" | jq . > $ScriptHome/RaiSearchItem.json; fi
+    ItemJson=$($Curl  -A "$UserAgent" "$AnchorHome$ItemHome" | jq .)
+#    echo "$ItemJson" | jq . > $ScriptHome/RaiSearchItem.json
+    if [ "$AggType" = ".aggs.audio" ]; then
+        Relinker=$(echo "$ItemJson" | jq -r .audio.url)
+        Lasts=$(echo "$ItemJson" | jq -r .audio.duration)
+        ChnCast=$(echo "$ItemJson"  | jq -r .channel.name)
+        Summ=$(echo "$ItemJson"  | jq -r .podcast_info.description | grep -v null | cut -c 1-500)
+        Summ2=$(echo "$ItemJson"  | jq -r .description | grep -v null | cut -c 1-500)
+        Summ=$(echo "$Summ $Summ2" | sed -e 's|^ ||g') 
+    else
+        Relinker=$(echo "$ItemJson" | jq -r .video.content_url)
+        Lasts=$(echo "$ItemJson" | jq -r .video.duration)
+        ChnCast=$(echo "$ItemJson"  | jq -r .channel)
+        Summ=$(echo "$ItemJson"  | jq -r .description | cut -c 1-500)
+    fi
+    if [ "$Relinker" != "" ]; then
+        Summ="* $ChnCast *\n$Summ"
+        ThisLink="$Relinker"
+        HandleLink
+        return
+    fi
+    if [ "$Relinker" = "" ]; then
+        MultiJson=$(echo "$ItemJson" | jq . | grep '"first_item_path":' | cut -d ':' -f2 | cut -d '"' -f2)
+        RelinkerData=$($Curl  -A "$UserAgent" "$AnchorHome$MultiJson")
+        if [ "$Debug" = "1" ]; then echo "$RelinkerData" | jq . > $ScriptHome/RaiSearchMultiRelinker.txt; fi
+        Summ=$(echo "$ItemJson"  | jq -r .description | cut -c 1-500)
+        ChnCast=$(echo "$ItemJson"  | jq -r .channel)
+        Lasts=$(echo "$ItemJson" | jq -r .video.duration)
+        Summ="* $ChnCast *\n$Summ"
+        Relinker=$(echo "$ItemJson" | jq -r .video.content_url)
+        ThisLink="$Relinker"
+    fi
+    HandleLink
+}
+#--------------------------------------------------------------------------------------------------------------------------------------
+HandleLink () {
+    Elapsed="$Durata"
+    ThisTitle="$ItemName"
+    if [ "$AggType" != ".aggs.audio" ]; then
+        Relinker=$(echo "$Relinker" | sed -e 's|^ ||g' -e 's| $||g' | tr -d ' \n\r')
+        Dash=$($Curl  -A "$UserAgent" "$Relinker" | grep -c dash)
+    else
+        Dash=0
+    fi
+    if [ "$Dash" != "0" ]; then
+        BoxMsg="$ItemName is DRM protected and not playable on Linux"
+        BoxTitle="$Me $Version $Codename"
+        ShowInfo
+        return
+    fi
+    if [ "$Summ" = "" ]; then
+        Summ=$(echo "$ItemJson" | awk -F '"sommario"' '{print $2}' | cut -d '"' -f2)
+        Summ=$(echo "$Summ" | cut -c 1-500) # | sed 's/\(.*\) .*/\1/')
+    fi
+    Summ=$(echo "$Summ" | sed -e 's|{"id"|\'$'\n{"id"|g' | sed -e "s|&quot;|'|g" -e "s|\&amp;|\&|g" -e "s|&amp;#x27;|'|g" -e "s|\&#x27;|'|g" -e "s|\&amp;|\&|g")
+    if [ "$Summ" = "" ]; then
+        Elapsed="\n\nDurata: unknown\nSummary: n/a"
+        if [ "$ThisType" != "" ]; then
+            Info="\n\n$ThisType\n\n"
+        else
+            Info="\n\n"
+        fi
+    else
+        Info="\n$Summ....\n"
+    fi
+    ThisLink=$(echo "$Relinker" | tr -d ' \n\r')
+    ChName="$ThisTitle"
+ #------------------------------------------------------------------------------------------------------------------
+    if [ "$Wsl" = "1" ]; then
+        ThisPlayer="$PlayerVodW"
+    else
+        ThisPlayer="$PlayerVod"
+    fi
+     if [ "$AggType" = ".aggs.audio" ]; then
+         ThisPlayer="$PlayerRadio"
+     fi
+#------------------------------------------------------------------------------------------------------------------        
+    AskAction
+#------------------------------------------------------------------------------------------------------------------        
+    echo "Search: $ThisTitle Cmd: $ThisPlayer $WinTitle $PlayerOpt $ThisLink" >> $ScriptHome/$Me.log
+    ItemAsked=''
+}
+#------------------------------------------------------------------------------------------------------------------
+ShowResults () {
+    clear
+    ItemStart=1
+    ItemShown="$IndexS"
+    MaxAllowed=="$ItemShown"
+    let MaxPages=$MaxFound/$Psize+1
+    MaxPages=1
+    PageNumber=1
+    while [ 1 ];  do
+        ItemAsked=$(dialog --title " $Me $Version " --default-item "$DefItemS" --ok-label "Proceed"   --cancel-label "Go Back" --stdout --menu "Catched $MaxFound items. Search arg: $SearchArg. Range shown: $ItemStart-$ItemShown Page: $PageNumber/$MaxPages\n(RAI limited search results now. Some may be dead or dups links) " 0 0 25 "${SearchMenu[@]}")
+        Button="$?"
+        DefItemS="$ItemAsked"
+        if [ "$Button" = "1" ] ||  [ "$Button" = "255" ]; then
+            return
+        fi
+        Id=$(echo "$Ids" | sed -n ${ItemAsked}p)
+        ItemName=$(echo "$Titles" | sed -n ${ItemAsked}p)    
+        ItemHome=$(echo "$Path_ids" | sed -n ${ItemAsked}p)    
+        ChName="$ItemName"
+        GetBlock
+    done
+}
+#------------------------------------------------------------------------------------------------------------------
+ParseResultPage () {
+    unset SearchMenu;
+    MaxFound=$(echo "$RawData" | jq -r .totale)
+    Ids=$(echo "$RawData"  | jq -r .cards[].id)
+    Titles=$(echo "$RawData"  | jq -r  .cards[].titolo)
+    Path_ids=$(echo "$RawData"  |  jq -r .cards[].path_id)
+    Programs=$(echo "$RawData"  | jq -r  .cards[].programma)
+    Urls=$(echo "$RawData"  | jq -r .cards[].url)
+    if [ "$Debug" = "1" ]; then 
+        echo "$RawData" | jq . > $ScriptHome/RaiRawData.json
+    fi
+    IndexS=0
+    while read Title; do
+        let IndexS++
+        ProgId=$(echo "$Programs" | sed -n ${IndexS}p)
+        Ltitle=$(echo "$Title" | tr '[:upper:]' '[:lower:]')
+        LprogId=$(echo "$ProgId" | tr '[:upper:]' '[:lower:]')
+        if [  "$Ltitle" != "$ProgId" ]; then
+            Tags=$(echo "$ProgId $Title" | sed -e 's|^ ||g' -e 's| $||g')
+        else
+            Tags="$ProgId"
+        fi
+        SearchMenu=("${SearchMenu[@]}" $IndexS "$Tags")
+    done <<< "$Titles"
+}
+#------------------------------------------------------------------------------------------------------------------
+#------- This function basic initially written by my friend Laser :-)     
+#------------------------------------------------------------------------------------------------------------------
+Search () {
+    ThisPlayer="$PlayerVod"
+	while true; do
+		SearchArg=`dialog --colors --stdout --cancel-label "Go Back" --title " $Me $Version " --backtitle "Search Mode Enabled" --inputbox "Enter a search argument" 8 60`
+		Button="$?"
+        if [ "$Button" = "1" ] ||  [ "$Button" = "255" ]; then
+            return
+        fi
+		if [ "$SearchArg" == "" ]; then
+			dialog --title "Search function:" --infobox " An empty search argument is invalid " 5 41
+			sleep 3
+			continue
+		fi
+		SearchArg="${SearchArg// /%20}"
+		PageSearch=0
+		dialog --title "Search takes time....:" --infobox "Searching for >> $SearchArg << pls wait. " 5 50
+        Parms='{"param":"'${SearchArg}'","page":'$PageSearch',"pageSize":'$Psize'}'
+        RawData=$(curl -sLk -A "$UserAgent" -H 'Content-Type: application/json; charset=UTF-8' -d $Parms "$AnchorSearch" | jq -r $AggType)
+		ParseResultPage
+        if [ "$MaxFound" = "0" ]; then
+            dialog --title "No items found" --infobox "No items found using >> $SearchArg << Hit ENTER to continue" 5 50
+            read < /dev/tty
+            continue
+        fi
+		ShowResults
+	done
+}
+#------------------------------------------------------------------------------------------------------------------
+#------- This raw function to handle new Raiplaysoud Pod contents   
+#------------------------------------------------------------------------------------------------------------------
+Podcast () {
+    PodsInfo=$($Curl -A "$UserAgent" https://www.raiplaysound.it/generi.json | jq .)
+    PodCats=$(echo "$PodsInfo" | jq -r '.block.cards[].title' | tr ' '  ' _')
+    PodLinks=$(echo "$PodsInfo" | jq -r .block.cards[].path_id)
+    unset PodCatsMenu
+    Index=0
+    while read PodCat; do
+        let Index++
+        PodCatsMenu=("${PodCatsMenu[@]}" $Index "$PodCat" )
+    done <<< "$PodCats"
+	while true; do
+        Reply=$(dialog --title " $Me $Version $CodeName " --default-item "$DefPodCat" --extra-button --extra-label "Change default player" --ok-label 'Proceed'  --cancel-label "Goback" --stdout --menu "Rai Radio Podcast > Pls select a pod category" 0 60 21 "${PodCatsMenu[@]}")
+        Button="$?"
+        if [ "$Button" = "1" ] ||  [ "$Button" = "255" ]; then
+            Lasts=''
+            return
+        fi
+        if [ "$Button" = "3" ]; then
+            NewPlayer=$(dialog --stdout --inputbox " Please enter a new radio player " 0 0 $PlayerRadio) 
+            if [ "$NewPlayer" != "" ]; then
+                PlayerRadio="$NewPlayer"
+                ThisPlayer="$PlayerRadio"
+            fi
+            continue
+        fi
+        DefPodCat="$Reply"
+        PodCatName=$(echo "$PodCats"   | sed -n "${Reply}p")
+        PodCatHome=$(echo "$PodLinks"  | sed -n "${Reply}p")
+        PodCatData=$($Curl -A "$UserAgent"  https://www.raiplaysound.it$PodCatHome | jq .)
+        PodCatContents=$(echo "$PodCatData" | jq -r '.blocks[].cards[] | .title,.path_id' | grep -v '^\/gener' | more | grep -B1 '^\/')
+        PodContentNames=$(echo "$PodCatContents" | grep  -v "^\/")
+        PodContentLinks=$(echo "$PodCatContents" | grep  "\/")
+        Index=0
+        unset PodContentMenu
+        while read Pod; do
+            let Index++
+            PodContentMenu=("${PodContentMenu[@]}" $Index "$Pod" )
+        done <<< "$PodContentNames"
+        DefPodCont=1
+        while [ 1 ]; do
+            Reply=$(dialog --title " $Me $Version $CodeName " --default-item "$DefPodCont" --ok-label 'Proceed'  --cancel-label "Goback" --stdout --menu "Rai Radio Podcast > Pls select a pod item" 0 60 0 "${PodContentMenu[@]}")
+            Button="$?"
+            if [ "$Button" = "1" ] ||  [ "$Button" = "255" ]; then
+                break
+            fi
+            DefPodCont="$Reply"
+            ThisPodName=$(echo "$PodContentNames"   | sed -n "${Reply}p")
+            ThisPodHome=$(echo "$PodContentLinks"  | sed -n "${Reply}p")
+            PodContents=$($Curl -A "$UserAgent"  https://www.raiplaysound.it$ThisPodHome | jq -r .)        
+            PodItemsNames=$(echo "$PodContents" |  jq -r '.block.cards[] | .episode_title' | sed -e 's|^.*\. ||g')
+            EpisodeIsNull=$(echo "$PodItemsNames" | grep -v 'null')
+            if [ "$EpisodeIsNull" = "" ]; then
+                dialog --title "Empty section" --infobox "$Me is currently unable to retrieve POD items for:\n\n$ThisPodName category.\n\n" 0 0
+                sleep 3
+                continue
+            fi
+            echo "$PodItemsNames" > $ScriptHome/RaiPods.txt
+            PodItemsLinks=$(echo "$PodContents" | jq -r '.block.cards[] | .audio.url' )
+            PodItemsInfo=$(echo "$PodContents" | jq -r '.block.cards[] | .description' )
+            PodItemsTime=$(echo "$PodContents" | jq -r '.block.cards[] |.audio.duration')
+            Index=0
+            unset PodItemsMenu
+            while read Pod; do
+                let Index++
+                PodItemsMenu=("${PodItemsMenu[@]}" $Index "$Pod" )
+            done <<< "$PodItemsNames"
+            DefPodItem=1
+            while [ 1 ]; do
+                Reply=$(dialog --title " $Me $Version $CodeName " --default-item "$DefPodItem" --ok-label 'Proceed'  --cancel-label "Goback" --stdout --menu "Rai Radio Podcast > Pls select a pod item" 0 70 0 "${PodItemsMenu[@]}")
+                Button="$?"
+                if [ "$Button" = "1" ] ||  [ "$Button" = "255" ]; then
+                    break
+                fi
+                DefPodItem="$Reply"
+                ChName=$(echo "$PodItemsNames"   | sed -n "${Reply}p")
+                ThisLink=$(echo "$PodItemsLinks"  | sed -n "${Reply}p")
+                Relinker="$ThisLink"
+                Info=$(echo "$PodItemsInfo"  | sed -n "${Reply}p" | grep -v 'null')
+                Lasts=$(echo "$PodItemsTime"  | sed -n "${Reply}p" | grep -v 'null')
+                ThisPlayer="$PlayerRadio"
+                AskAction
+            done
+        done
+	done
+}
+
+#-------------------------------------------------------------------------------------------------------------------
+LoadMain () {
+    if [ "$Warn" = "1" ]; then 
+        dialog --title "INFO" --infobox "$Me acts only as broker between RAIPLAY.IT site and the local player.\n\nSo once the source link has been extracted $Me is no more responsible if the flow lags or drops.\n\nHit ENTER to CONTINUE" 11 47
+        read < /dev/tty
+    fi
+    StreamType="Live"
+    unset RaiMenu
+    OnAirHome=$($Curl -A "$UserAgent" "$AnchorOnAir" | jq .)
+    LiveHome=$($Curl -A "$UserAgent" "$AnchorLive" | jq .)
+    LiveNames=$(echo "$LiveHome" | jq -r .contents[].channel)
+    LiveLinks=$(echo "$LiveHome" | jq -r .contents[].video.content_url | sed -e 's|https|http|g' | tr -d ' ')
+    if [ "$Enable4k" = "1" ]; then
+        LiveNames=$(echo  -e "$LiveNames" "\nRai 4k")
+        LiveLinks=$(echo  -e "$LiveLinks" "\nhttp://mediapolis.rai.it/relinker/relinkerServlet.htm?cont=4465258")
+    fi
+    if [ "$Debug" = "1" ]; then
+        echo "$LiveHome" > $ScriptHome/RaiLive.txt;
+        echo "$LiveNames" >> $ScriptHome/RaiLive.txt;
+        echo "$LiveLinks" >> $ScriptHome/RaiLive.txt; 
+    fi
+    LiveLinks=$(echo "$LiveLinks" | tr -d ' \r')
+    LiveNames=$(echo "$LiveNames" | tr -d '\r')
+#-------------------------------------------------------------------------------------------------------------------
+    if [ "$LiveNames" = "" ]; then 
+        dialog --title "Raiplay timeout" --infobox "RAIPLAY.IT is unreachable. To debug:\n\n1) Check your connection\n2) Start a speedtest\n3) Access RAIPLAY.IT by a browser.\n\nHit ENTER to EXIT" 10 40
+        read < /dev/tty
+        exit
+    fi
+#-------------------------------------------------------------------------------------------------------------------
+    Index=0
+    while read Chan; do
+        let Index++
+        if [ "$Chan" = "Rai 4K" ]; then 
+            RaiMenu=("${RaiMenu[@]}" $Index "$Chan - WARNING: RESTREAM NOT AVAILABLE")
+        else
+            RaiMenu=("${RaiMenu[@]}" $Index "$Chan" ) 
+        fi
+    done <<< "$LiveNames"
+    LiveItems="$Index"
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "Radio Rai")
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "Podcast radio")
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "Rai Replay")
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "RaiPlay Vods")
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "Cineteca Rai Movie")
+    let Index++
+    RaiMenu=("${RaiMenu[@]}" $Index "Refresh channels contents")
+    if [ "$Recorder" = "hlsdl" ]; then
+        let Index++
+        RaiMenu=("${RaiMenu[@]}" $Index "Handle Recorder Quality")
+    fi
+    MenuItems="$Index"
+}
+#-------------------------------------------------------------------------------------------------------------------
+ShowMedia () {
+    RadioRai=$((LiveItems+1))
+    Podcast=$((LiveItems+2))
+    RaiReplay=$((LiveItems+3))
+    Vods=$((LiveItems+4))
+    Cineteca=$((LiveItems+5))
+    Refresh=$((LiveItems+6))
+    if [ "$Recorder" = "hlsdl" ]; then
+        SetRecVbr=$((MenuItems))
+    fi
+    while [ 1 ]; do
+        Reply=$(dialog --title " $Me $Version $CodeName " --default-item "$DefItem" --extra-button --extra-label 'PodSearch' --ok-label 'Play/Set' --help-button --help-label 'VideoSearch' --cancel-label "Exit" --stdout --menu "Rai Tv Live channels:$LiveItems > Pls select a channel/option\nHit ESC to change live & vod player\n" 0 60 21 "${RaiMenu[@]}")
+        Button="$?"
+        if [ "$Button" = "1" ]; then
+            clear
+            exit
+        fi
+        if [ "$Button" = "2" ]; then
+            StreamType="Replay"
+            StreamOrigin="Search"
+            AnchorSearch="$AnchorVidSearch"
+            AnchorHome="$AnchorVideo"
+            AggType=".agg.video"
+            Search
+            continue
+        fi
+        if [ "$Button" = "3" ]; then
+            StreamType="Radio"
+            StreamOrigin="Search"
+            AnchorSearch="$AnchorPodSearch"
+            AnchorHome="$AnchorRadio"
+            AggType=".aggs.audio"
+            Search
+            continue
+        fi
+        if [ "$Button" = "255" ]; then
+            SetPlayerLive
+            continue
+        fi
+        DefItem=`echo $Reply | awk '{print $1}'`
+        if [ "$Reply" = "$RadioRai" ]; then
+            StreamType="Radio"
+            StreamOrigin="Radio"
+            AnchorHome="$AnchorRadio"
+            RadioRai
+            continue
+        fi
+        if [ "$Reply" = "$RaiReplay" ]; then
+            StreamType="Replay"
+            StreamOrigin="Replay"
+            AnchorHome="$AnchorVideo"
+            GetChan
+            continue
+        fi
+        if [ "$Reply" = "$Refresh" ]; then
+            LoadMain
+            continue
+        fi
+        if [ "$Reply" = "$Cineteca" ]; then
+            StreamType="Replay"
+            StreamOrigin="Cinema"
+            AnchorHome="$AnchorVideo"
+            Cinema
+            continue
+        fi
+        if [ "$Reply" = "$Podcast" ]; then
+            StreamType="Radio"
+            StreamOrigin="Radio"
+            AnchorHome="$AnchorRadio"
+            Podcast
+            continue
+        fi
+        if [ "$Reply" = "$Vods" ]; then
+            if [ -f "$ScriptHome/$VodHelper" ]; then
+                 $ScriptHome/$VodHelper "called $HlsdlVbr" "$MonPid" "$ResPid" 
+                continue
+            else
+                dialog --title "$VodHelper missing." --yesno "L'opzione usa lo script $VodHelper per accedere ai VOD della RAI.\nLo script non e' presente in questo folder.\nPuoi scaricarlo automaticamente con l'opzione <si> oppure scaricarlo a mano da qui:\nhttps://www.paolodistefano.name\n\n" 11 68
+                response=$?
+                if [ "$response" = "0" ]; then
+                    curl -s -o "$ScriptHome/$VodHelper" "$VodHome"
+                    chmod 755 $ScriptHome/$VodHelper
+                    $ScriptHome/$VodHelper "called $HlsdlVbr" 
+                fi
+                continue
+            fi
+        fi
+        if [ "$Reply" = "$SetVbr" ]; then
+            SetVbr
+            continue
+        fi
+        if [ "$Reply" = "$SetRecVbr" ]; then
+            SetHlsdlVbr
+            continue
+        fi
+        if [ "$Reply" -le "$RadioRai" ]; then
+            AnchorHome="$AnchorVideo"
+            StreamType="Live"
+            StreamOrigin="Live"
+            LinkItem="$Reply"
+            Relinker=$(echo "$LiveLinks"  | sed -n "${LinkItem}p")
+            ChName=$(echo "$LiveNames"  | sed -n "${LinkItem}p")
+            PlayLive
+        fi
+    done
+}
+#------------------------------------------------------------------------------------------------------------------
+TestSys
+LoadMain
+ShowMedia
+clear
+exit
+#------------------------------------------------------------------------------------------------------------------
