@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #-------------------------------------------------------------------------------------------------------------------
-#           CopyRight 2015-2023Shorewall a.k.a. Kowalsky :D    
-#           
+#           CopyRight 2015-2023  by Shorewall a.k.a. Kowalsky :D              
 #
 #           RaiNix is free software: you can redistribute it and/or modify
 #           it under the terms of the GNU General Public License as published by
@@ -22,7 +21,7 @@
 #           Can also record the Radio, Replay flow and most of the live streaming, depending of your
 #           ffmpeg level and the originating stream type.
 #           This option must be used for study cases only. Respecting the DMCA rules.
-#           The usage is under EXCUSIVE USERS RESPONSIBILITY.
+#           The usage is under EXCLUSIVE USERS RESPONSIBILITY.
 #----------------------------------------------------------------------------------------------------------------------------------------------------
 #
 #           By K. aka Shore aka The Gray and many other identities :-)
