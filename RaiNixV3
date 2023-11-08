@@ -137,7 +137,7 @@
 #                                   GO TO MY FRIEND Paolo site: http://www.paolodistefano.name   
 #
 #   notes: v 3.0.X      1) Some links are DRM protected. No player on Linux can play these sources.
-#						          2) The SetVbr option applies only to StreamLink. Mpv can set the required quality only if an 
+#				 2) The SetVbr option applies only to StreamLink. Mpv can set the required quality only if an 
 #                                   hlsvariant type stream is detected. Otherwise the best video quality is applied.
 #                               3)  A list of the major players working for live replay/vod and radio streams are included by default.
 #                                   Set your preferred order. The player window title setting is supported only for MPV, VLC, Streamlink.
