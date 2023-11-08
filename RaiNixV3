@@ -120,7 +120,8 @@
 #                                 Used json format to extract Movies cat & lists.
 #   changelog: v 3.3.7 Enabled the new ResTidy function. This avoid protocol/port conflict when running a Restream flow. 
 #                                 On exit running restream will be ketp running. ResTidy act only when starting a new retream.
-#                                 Changed the AskAction dialog to make it compatible with the latest Slack releases.
+#                                 Changed the AskAction dialog to make it compatible with the latest Dialog releases.
+#				   Made Cineteca large menu's about 500% faster to load.
 #
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #                               Times goes on and release by release, RAINIX, and RaiNixVod,  have mapped a large part of the
@@ -245,8 +246,8 @@ Who=$(whoami)
 Owner='root'
 #---------------------------------------- Use external conf to override defauls --------------------------------------
 if [ -f "$ScriptHome/$Me.conf" ]; then
-    .  "$ScriptHome/$Me.conf"
-    dialog --title "Warning" --infobox "You are using the external $Me.conf.\nPlease be careful changing internal defaults." 4 50; 
+	"$ScriptHome/$Me.conf"
+    	dialog --title "Warning" --infobox "You are using the external $Me.conf.\nPlease be careful changing internal defaults." 4 50; 
 	sleep 3
 fi
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -298,11 +299,11 @@ fi
 #----------------------------------------------------------------------------------------------------------------------------------
 if [ "$Who" = "$Owner"  ]; then           # My own setup prefs :-). I'm the only crazy people using ROOT as default user.
 # ResProtocols="udp rtp udp http rtsp"
-    ResTool="hlsdl"
-    ResDef='hlsdl'
-    RecDef='hlsdl'
-    FFmpeg='ffmpeg5'
-    Savedir="$HOME/Film"
+	ResTool="hlsdl"
+	ResDef='hlsdl'
+	RecDef='hlsdl'
+	FFmpeg='ffmpeg5'
+	Savedir="$HOME/Film"
 	HlsdlEngine="mpv"
 	PlayerRadio="parole"
 	PlayerLive="QMPlay2"
@@ -358,17 +359,17 @@ RecNoTerm () {
 }
 #------------------------------------------------------------------------------------------------------------------
 function Record () {
-    Cleanup
-    Tag=$(date +%Y%m%d_%H%M)
-    mkdir -p "$Savedir" 2>/dev/null
-    if [ "$Recorder" = "NotFound" ]; then
-        dialog --title "Recording failure" --infobox " Sorry, no recording tool found. Recording will not work. " 6 30
-        sleep 3
-	    return
+	Cleanup
+	Tag=$(date +%Y%m%d_%H%M)
+	mkdir -p "$Savedir" 2>/dev/null
+	if [ "$Recorder" = "NotFound" ]; then
+        	dialog --title "Recording failure" --infobox " Sorry, no recording tool found. Recording will not work. " 6 30
+        	sleep 3
+		return
 	fi
 #-------------------------------------------------------------------------------------------------------------------
     if [ "$StreamType" = "Replay" ]; then    
-        Ext="$ReplRecFmt"
+	Ext="$ReplRecFmt"
     fi
     #------------------------------------------------------------------------------------------------------------------- 
     if [ "$StreamType" = "Live" ]; then
@@ -422,7 +423,6 @@ function Record () {
         return
     fi
 #-------------------------------------------------------------------------------------------------------------------
-
     dialog --title "$ChName starting" --infobox "Starting $ChName recording using $Recorder. " 6  50
  #   if [ "$HideRecorder" = "1" ]; then
  #       RecNoTerm
@@ -483,10 +483,10 @@ ShowInfo () {
 #-------------------------------------------------------------------------------------------------------------------
 SetEpgStatus () {
     while [ 1 ]; do
-		EpgStatus=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "Set Epg prompt for live streams" 10 40 3 0 Off 1 On)
-		if [ "$EpgStatus" == "" ]; then
-		   return
-		fi
+	EpgStatus=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "Set Epg prompt for live streams" 10 40 3 0 Off 1 On)
+	if [ "$EpgStatus" == "" ]; then
+	   return
+	fi
         if ((EpgStatus >=0  && EpgStatus <= 1)); then
             let EpgStatus=$EpgStatus
             return
@@ -496,10 +496,10 @@ SetEpgStatus () {
 #-------------------------------------------------------------------------------------------------------------------
 SetHlsdlVbr () {
     while [ 1 ]; do
-		RecVbrReply=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "VBR handler for HLSDL recorder" 10 40 3 0 Off 1 On)
-		if [ "$RecVbrReply" == "" ]; then
-		   return
-		fi
+	RecVbrReply=$(dialog --default-item "$RecVbrDef" --cancel-label "Go Back" --stdout --menu "VBR handler for HLSDL recorder" 10 40 3 0 Off 1 On)
+	if [ "$RecVbrReply" == "" ]; then
+	   return
+	fi
         if ((RecVbrReply >=0  && RecVbrReply <= 1)); then
             let RecVbrDef=$RecVbrReply
             if [ "$RecVbrReply" = "1" ]; then
@@ -563,31 +563,31 @@ DynMenu  () {
 }
 #---------------------------------------------------------------------------------------------------------------------
 CatMovies () {
-    BoxMsg="Retrieving movies list.\n\nCategory: $CatName\n\n"
+	BoxMsg="Retrieving movies list.\n\nCategory: $CatName\n\n"
 	BoxTitle="$Me $Version $Codename"
 	ShowInfoDelay=0
 	ShowInfo
 	ShowInfoDelay=3
 	CatContent=$($Curl -L -A "$Ua" "$AnchorCine$CatLink" |  jq -r ".contents[]")
-    ThisCatLinks=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .path_id)
-    ThisCatTitles=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .name)
-    ThisCatTitles=$(echo "$ThisCatTitles" | sed -e "s|&#248;|ø|g" -e "s|&#233;|é|g" -e "s|&#242;|ò|g" -e "s|&#249;|ù|g" -e "s|&#39;|'|g" -e "s|&#224;|à|g" -e "s|&#232;|è|g" -e "s|&#x27;|'|g" -e 's|\&amp;|\&|g' | sed -e 's|^_||g')
-    unset CatContentMenu
-    DynMenu
+    	ThisCatLinks=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .path_id)
+    	ThisCatTitles=$(echo "$CatContent"  | jq ".[] | select(.name != null)" | jq -r .name)
+    	ThisCatTitles=$(echo "$ThisCatTitles" | sed -e "s|&#248;|ø|g" -e "s|&#233;|é|g" -e "s|&#242;|ò|g" -e "s|&#249;|ù|g" -e "s|&#39;|'|g" -e "s|&#224;|à|g" -e "s|&#232;|è|g" -e "s|&#x27;|'|g" -e 's|\&amp;|\&|g' | sed -e 's|^_||g')
+    	unset CatContentMenu
+    	DynMenu
 	DefChan=""
 	while [ 1 ]; do
-        Reply=$(dialog  --title "$Me $Version $Codename" --default-item "$DefChan"  --ok-label 'Proceed' --cancel-label 'Go Back' --stdout --menu "Available movies for category $CatName: $Index" 22 60 15 "${CatContentMenu[@]}")
-        Button="$?"
-        if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
-            return
-        fi
-        DefChan="$Reply"
-        let ChanPos=$Reply*2-1
-        MovieName="${CatContentMenu[$ChanPos]}"
-        MovieHome=$(echo "$ThisCatLinks" | sed -n ${Reply}p)
-        ChName=$(echo "$MovieName" | tr '_' ' ')
-        GetLink
-        AskAction
+        	Reply=$(dialog  --title "$Me $Version $Codename" --default-item "$DefChan"  --ok-label 'Proceed' --cancel-label 'Go Back' --stdout --menu "Available movies for category $CatName: $Index" 22 60 15 "${CatContentMenu[@]}")
+        	Button="$?"
+        	if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
+            		return
+        	fi
+        	DefChan="$Reply"
+        	let ChanPos=$Reply*2-1
+        	MovieName="${CatContentMenu[$ChanPos]}"
+        	MovieHome=$(echo "$ThisCatLinks" | sed -n ${Reply}p)
+        	ChName=$(echo "$MovieName" | tr '_' ' ')
+        	GetLink
+        	AskAction
 	done
 }
 #--------------------------------------------------------------------------------------------------------------------------------------
@@ -595,17 +595,17 @@ function GetLink () {
 	BoxMsg="Retrieving info about:\n\n$MovieName\n"
 	BoxTitle="$Me $Version $Codename"
 	ShowInfo
-    MovieJson=$($Curl  -A "$UserAgent" "$AnchorCine$MovieHome")
-    if [ "$Debug" = "1" ]; then echo "$MovieJson" > $ScriptHome/RaiMovJson.txt; fi
-    MoviePageUrl=$(echo "$MovieJson" | grep -o 'first_item_path.*' | grep -o '/video/.*' | cut -d '"' -f1)
-    RelinkerData=$($Curl  -A "$UserAgent" "$AnchorCine$MoviePageUrl")
-    Relinker=$(echo "$RelinkerData" | grep -o '"content_url".*' | cut -d '"' -f4)
-    Relinker=$(echo "$Relinker" | sed -e 's|^ ||g' -e 's| $||g')
-    ThisPlayer="$PlayerVod"
-    ThisLink="$Relinker"
-    Summ=$(echo "$MovieJson" | awk -F '"description"' '{print $2}' | awk -F ',"label"' '{print $1}' | tr -d '\\'  |  cut -d '"' -f2- | cut -d '"' -f1- | cut -d '"' -f1- | awk -F '",' '{print $1}')
-    Summ=$(echo "$Summ" | cut -c 1-500) # | sed 's/\(.*\) .*/\1/')
-    Info="\n\n$Summ....\n\n"
+    	MovieJson=$($Curl  -A "$UserAgent" "$AnchorCine$MovieHome")
+    	if [ "$Debug" = "1" ]; then echo "$MovieJson" > $ScriptHome/RaiMovJson.txt; fi
+    	MoviePageUrl=$(echo "$MovieJson" | grep -o 'first_item_path.*' | grep -o '/video/.*' | cut -d '"' -f1)
+    	RelinkerData=$($Curl  -A "$UserAgent" "$AnchorCine$MoviePageUrl")
+    	Relinker=$(echo "$RelinkerData" | grep -o '"content_url".*' | cut -d '"' -f4)
+    	Relinker=$(echo "$Relinker" | sed -e 's|^ ||g' -e 's| $||g')
+    	ThisPlayer="$PlayerVod"
+    	ThisLink="$Relinker"
+    	Summ=$(echo "$MovieJson" | awk -F '"description"' '{print $2}' | awk -F ',"label"' '{print $1}' | tr -d '\\'  |  cut -d '"' -f2- | cut -d '"' -f1- | cut -d '"' -f1- | awk -F '",' '{print $1}')
+    	Summ=$(echo "$Summ" | cut -c 1-500) # | sed 's/\(.*\) .*/\1/')
+    	Info="\n\n$Summ....\n\n"
 }
 #-------------------------------------------------------------------------------------------------------------------
 Replay () {
@@ -674,7 +674,7 @@ GetChan () {
         Chan=$(dialog --title " $Me $Version " --default-item "$Chan"  --cancel-label "Go Back" --stdout --menu "Rai Replay Channels: $Index > Select a channel" 0 60 0 "${RepMenu[@]}")
         Button="$?"
         if [ "$Chan" == "" ]; then
-			return
+		return
         fi
         ChanPath=$(echo "$ChansPath" | tr '\n' ' ' | cut -d ' ' -f$Chan)
         let NamePos=$Chan*2-1
@@ -711,7 +711,7 @@ GetDate () {
             fi
         fi
         if [ "$Day" == "" ]; then
-			return
+		return
         fi
         DayName=$(echo $Week | grep -o "$Day.*"| cut -d ' ' -f2)
         Replay 
@@ -733,8 +733,8 @@ RadioRai () {
     RadioMenu=("${RadioMenu[@]}" $Index "Change Radio Player" )
     MaxItems="$Index"
     while [ 1 ]; do
-		RadioChan=$(dialog --title " $Me $Version " --default-item "$RadioChan" --extra-button --extra-label 'Epg'  --ok-label "Proceed"  --cancel-label "Go Back" --stdout --menu "Radio Rai channels:$RadioLive > Pls select a station" 0 60 0 "${RadioMenu[@]}")
-		Button="$?"
+	RadioChan=$(dialog --title " $Me $Version " --default-item "$RadioChan" --extra-button --extra-label 'Epg'  --ok-label "Proceed"  --cancel-label "Go Back" --stdout --menu "Radio Rai channels:$RadioLive > Pls select a station" 0 60 0 "${RadioMenu[@]}")
+	Button="$?"
         if [ "$Button" = "1" ] || [ "$Button" = "255" ]; then
             return
         fi
@@ -743,7 +743,7 @@ RadioRai () {
         LoadEpg
         if [ "$Button" = "3" ]; then
           ShowEpg
-            continue
+          continue
         fi
         if ((RadioChan >= 1 && RadioChan <= RadioLive)); then
             ThisLink=$($Curl -A "$UserAgent" "$AnchorRadio$ChJson" | jq -r . | grep mediapolis | tail -1 | cut -d '"' -f4)
@@ -834,14 +834,14 @@ while [ 1 ]; do
             PlayerLive="$MyPlayer"
             PlayerVod="$MyPlayer"
             return
-        fi
+         fi
         PlayerVod="$MyPlayer"
         PlayerLive="$MyPlayer"
-		return
-	fi
-	clear
-	dialog --title "Error" --infobox "The player $MyPlayer was not found into you system. Select a new one" 5 35;
-	sleep 4
+	return
+    fi
+    clear
+    dialog --title "Error" --infobox "The player $MyPlayer was not found into you system. Select a new one" 5 35;
+    sleep 4
 done
 }
 #-----------------------------------------------------------------------------------------------------------------------------
@@ -1217,10 +1217,10 @@ RunPlayer () {
 }
 #------------------------------------------------------------------------------------------------------------------
 GetBlock () {
-	BoxMsg="Retrieving info about:\n\n$ItemName\n\n"
-	BoxTitle="$Me $Version $Codename"
-	ShowInfo
-	if [ "$Debug" = "1" ]; then echo "$ItemJson" | jq . > $ScriptHome/RaiSearchItem.json; fi
+    BoxMsg="Retrieving info about:\n\n$ItemName\n\n"
+    BoxTitle="$Me $Version $Codename"
+    ShowInfo
+    if [ "$Debug" = "1" ]; then echo "$ItemJson" | jq . > $ScriptHome/RaiSearchItem.json; fi
     ItemJson=$($Curl  -A "$UserAgent" "$AnchorHome$ItemHome" | jq .)
 #    echo "$ItemJson" | jq . > $ScriptHome/RaiSearchItem.json
     if [ "$AggType" = ".aggs.audio" ]; then
